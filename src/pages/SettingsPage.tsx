@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Key, Download, Upload, Trash2, Check } from 'lucide-react';
-import tmdbService from '../services/tmdbService';
+import { ArrowLeft, Download, Upload, Trash2, Check } from 'lucide-react';
 import storageService from '../services/storageService';
 import { useTheme } from '../hooks/useTheme';
 import { THEMES } from '../utils/themes';
@@ -10,24 +9,8 @@ import './SettingsPage.css';
 const SettingsPage: React.FC = () => {
     const navigate = useNavigate();
     const { theme, setTheme } = useTheme();
-    const [apiKey, setApiKey] = useState(tmdbService.getApiKey() || '');
-    const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState('');
 
-    const handleSaveApiKey = () => {
-        if (!apiKey.trim()) {
-            setMessage('Please enter an API key');
-            return;
-        }
-
-        setIsSaving(true);
-        tmdbService.setApiKey(apiKey.trim());
-        setMessage('API key saved successfully!');
-        setTimeout(() => {
-            setMessage('');
-            setIsSaving(false);
-        }, 2000);
-    };
 
     const handleExport = async () => {
         try {
@@ -125,30 +108,7 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </section>
 
-                {/* API Key Section */}
-                <section className="settings-section">
-                    <h2>TMDb API Key</h2>
-                    <p className="section-desc">Required to fetch movie and TV show data.</p>
-                    <div className="input-group">
-                        <div className="input-wrapper">
-                            <Key size={18} className="input-icon" />
-                            <input
-                                type="text"
-                                className="settings-input"
-                                placeholder="Enter your TMDb API key"
-                                value={apiKey}
-                                onChange={(e) => setApiKey(e.target.value)}
-                            />
-                        </div>
-                        <button
-                            className="primary-button"
-                            onClick={handleSaveApiKey}
-                            disabled={isSaving}
-                        >
-                            {isSaving ? 'Saving...' : 'Save'}
-                        </button>
-                    </div>
-                </section>
+
 
                 {/* Data Management Section */}
                 <section className="settings-section">

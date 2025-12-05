@@ -2,7 +2,6 @@ import {
     TMDB_BASE_URL,
     TMDB_IMAGE_BASE_URL,
     TMDB_POSTER_SIZE,
-    STORAGE_KEYS,
     MEDIA_TYPES,
     ANIME_GENRE_ID,
     ORIGIN_COUNTRIES,
@@ -40,27 +39,23 @@ interface ProcessedItem {
 }
 
 class TMDbService {
-    private apiKey: string | null = null;
+    private apiKey: string = 'ad2987c3763f78fc22d170d0baedbfc3';
 
     constructor() {
-        this.loadApiKey();
+        // API key is now hardcoded
     }
 
-    private loadApiKey(): void {
-        this.apiKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
+    // Deprecated but kept for compatibility if needed, though effectively no-op or read-only
+    setApiKey(): void {
+        console.warn('API key is now managed globally and cannot be changed by user.');
     }
 
-    setApiKey(key: string): void {
-        this.apiKey = key;
-        localStorage.setItem(STORAGE_KEYS.API_KEY, key);
-    }
-
-    getApiKey(): string | null {
+    getApiKey(): string {
         return this.apiKey;
     }
 
     hasApiKey(): boolean {
-        return !!this.apiKey;
+        return true;
     }
 
     async searchMulti(query: string): Promise<ProcessedItem[]> {

@@ -38,11 +38,7 @@ export const useSearch = () => {
             return;
         }
 
-        if (!tmdbService.hasApiKey()) {
-            setError('Please set your TMDb API key in settings');
-            setResults([]);
-            return;
-        }
+
 
         if (!isOnline) {
             setError('You are offline. Search is unavailable.');

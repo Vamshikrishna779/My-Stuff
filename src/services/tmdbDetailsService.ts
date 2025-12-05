@@ -1,7 +1,6 @@
 import {
     TMDB_BASE_URL,
-    TMDB_IMAGE_BASE_URL,
-    STORAGE_KEYS
+    TMDB_IMAGE_BASE_URL
 } from '../utils/constants';
 
 // Interfaces for TMDb API responses
@@ -118,23 +117,13 @@ export interface DetailedItemData {
 }
 
 class TMDbDetailsService {
-    private apiKey: string | null = null;
+    private apiKey: string = 'ad2987c3763f78fc22d170d0baedbfc3';
 
     constructor() {
-        this.loadApiKey();
-    }
-
-    private loadApiKey(): void {
-        this.apiKey = localStorage.getItem(STORAGE_KEYS.API_KEY);
+        // API key is now hardcoded
     }
 
     private getApiKey(): string {
-        if (!this.apiKey) {
-            this.loadApiKey();
-        }
-        if (!this.apiKey) {
-            throw new Error('TMDb API key not set');
-        }
         return this.apiKey;
     }
 

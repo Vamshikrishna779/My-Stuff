@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Sun, Moon, Skull, Key, Download, Upload, Trash2, X } from 'lucide-react';
-import tmdbService from '../services/tmdbService';
+import { Sun, Moon, Skull, Download, Upload, Trash2, X } from 'lucide-react';
 import { type Theme } from '../hooks/useTheme';
 import './SettingsModal.css';
 
@@ -23,26 +22,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     theme,
     onThemeChange
 }) => {
-    const [apiKey, setApiKey] = useState(tmdbService.getApiKey() || '');
-    const [isSaving, setIsSaving] = useState(false);
+
     const [message, setMessage] = useState('');
 
     if (!isOpen) return null;
 
-    const handleSaveApiKey = () => {
-        if (!apiKey.trim()) {
-            setMessage('Please enter an API key');
-            return;
-        }
 
-        setIsSaving(true);
-        tmdbService.setApiKey(apiKey.trim());
-        setMessage('API key saved successfully!');
-        setTimeout(() => {
-            setMessage('');
-            setIsSaving(false);
-        }, 2000);
-    };
 
     const handleExport = async () => {
         try {
@@ -127,39 +112,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
                     </div>
 
-                    {/* API Key Section */}
-                    <div className="settings-section">
-                        <h3>TMDb API Key</h3>
-                        <p className="section-description">
-                            Get your free API key from{' '}
-                            <a
-                                href="https://www.themoviedb.org/settings/api"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                TMDb Settings
-                            </a>
-                        </p>
-                        <div className="input-group">
-                            <div className="input-wrapper">
-                                <Key size={16} className="input-icon" />
-                                <input
-                                    type="text"
-                                    className="settings-input with-icon"
-                                    placeholder="Enter your TMDb API key"
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                />
-                            </div>
-                            <button
-                                className="primary-button"
-                                onClick={handleSaveApiKey}
-                                disabled={isSaving}
-                            >
-                                {isSaving ? 'Saving...' : 'Save'}
-                            </button>
-                        </div>
-                    </div>
+
 
                     {/* Data Management Section */}
                     <div className="settings-section">
