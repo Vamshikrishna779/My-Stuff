@@ -1,0 +1,60 @@
+/* Regional Category Colors */
+.result-type.hollywood,
+.category-badge.hollywood {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.result-type.bollywood,
+.category-badge.bollywood {
+    background: rgba(249, 115, 22, 0.1);
+    color: #f97316;
+}
+
+.result-type.chinese,
+.category-badge.chinese {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.result-type.korean,
+.category-badge.korean {
+    background: rgba(236, 72, 153, 0.1);
+    color: #ec4899;
+}
+
+.result-type.japanese,
+.category-badge.japanese {
+    background: rgba(168, 85, 247, 0.1);
+    color: #a855f7;
+}
+
+.result-type.spanish,
+.category-badge.spanish {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
+}
+
+.result-type.french,
+.category-badge.french {
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+}
+
+.result-type.thai,
+.category-badge.thai {
+    background: rgba(217, 70, 239, 0.1);
+    color: #d946ef;
+}
+
+.result-type.turkish,
+.category-badge.turkish {
+    background: rgba(192, 38, 211, 0.1);
+    color: #c026d3;
+}
+
+.result-type.international,
+.category-badge.international {
+    background: rgba(100, 116, 139, 0.1);
+    color: #64748b;
+}

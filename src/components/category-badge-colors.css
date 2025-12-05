@@ -1,0 +1,40 @@
+/* Regional Category Colors for Cards */
+.category-badge.hollywood {
+    background: #ef4444;
+}
+
+.category-badge.bollywood {
+    background: #f97316;
+}
+
+.category-badge.chinese {
+    background: #dc2626;
+}
+
+.category-badge.korean {
+    background: #ec4899;
+}
+
+.category-badge.japanese {
+    background: #a855f7;
+}
+
+.category-badge.spanish {
+    background: #8b5cf6;
+}
+
+.category-badge.french {
+    background: #6366f1;
+}
+
+.category-badge.thai {
+    background: #d946ef;
+}
+
+.category-badge.turkish {
+    background: #c026d3;
+}
+
+.category-badge.international {
+    background: #64748b;
+}

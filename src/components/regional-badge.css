@@ -1,0 +1,13 @@
+/* Regional Badge Overlay */
+.regional-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 1.5rem;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    border-radius: 6px;
+    padding: 4px 8px;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}

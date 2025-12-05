@@ -1,0 +1,62 @@
+/* Regional Badge with Text and Region-Specific Colors */
+.regional-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(100, 116, 139, 0.95);
+    backdrop-filter: blur(12px);
+    border-radius: 4px;
+    padding: 4px 8px;
+    z-index: 4;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+/* Region-specific background colors */
+.regional-badge[data-region="US"] {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.regional-badge[data-region="IN"] {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.regional-badge[data-region="KR"] {
+    background: linear-gradient(135deg, #ec4899, #db2777);
+}
+
+.regional-badge[data-region="JP"] {
+    background: linear-gradient(135deg, #a855f7, #9333ea);
+}
+
+.regional-badge[data-region="CN"],
+.regional-badge[data-region="HK"],
+.regional-badge[data-region="TW"] {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.regional-badge[data-region="FR"] {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+.regional-badge[data-region="ES"],
+.regional-badge[data-region="MX"] {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.regional-badge[data-region="TH"] {
+    background: linear-gradient(135deg, #d946ef, #c026d3);
+}
+
+.regional-badge[data-region="TR"] {
+    background: linear-gradient(135deg, #c026d3, #a21caf);
+}
+
+.regional-badge[data-region="GB"] {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}

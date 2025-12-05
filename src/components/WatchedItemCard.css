@@ -1,0 +1,464 @@
+.watched-item-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    /* Premium Glass-morphism Effect */
+    backdrop-filter: blur(10px);
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.05) 0%,
+            rgba(255, 255, 255, 0.02) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        0 2px 8px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.watched-item-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow:
+        0 20px 60px rgba(99, 102, 241, 0.2),
+        0 8px 24px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(99, 102, 241, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.watched-item-card.removing {
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.3s ease;
+}
+
+.item-poster {
+    position: relative;
+    width: 100%;
+    padding-bottom: 150%;
+    /* 2:3 aspect ratio for larger posters */
+    overflow: hidden;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.item-poster img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.watched-item-card:hover .item-poster img {
+    transform: scale(1.1);
+}
+
+.poster-placeholder-large {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-size: 4rem;
+}
+
+/* Category Color Ribbon */
+.category-ribbon {
+    position: absolute;
+    bottom: 12px;
+    right: -35px;
+    background: linear-gradient(135deg, var(--ribbon-color, #ef4444), var(--ribbon-color-dark, #dc2626));
+    color: white;
+    padding: 6px 40px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transform: rotate(45deg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 3;
+}
+
+/* Category-specific ribbon colors */
+.category-ribbon.movies {
+    --ribbon-color: #ef4444;
+    --ribbon-color-dark: #dc2626;
+}
+
+.category-ribbon.animated {
+    --ribbon-color: #10b981;
+    --ribbon-color-dark: #059669;
+}
+
+.category-ribbon.cartoon {
+    --ribbon-color: #fb923c;
+    --ribbon-color-dark: #f97316;
+}
+
+.category-ribbon.anime {
+    --ribbon-color: #c084fc;
+    --ribbon-color-dark: #a855f7;
+}
+
+.category-ribbon.kdrama {
+    --ribbon-color: #ec4899;
+    --ribbon-color-dark: #db2777;
+}
+
+.category-ribbon.shows {
+    --ribbon-color: #3b82f6;
+    --ribbon-color-dark: #2563eb;
+}
+
+/* Regional Badge with Text and Region-Specific Colors */
+.regional-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(100, 116, 139, 0.95);
+    backdrop-filter: blur(12px);
+    border-radius: 4px;
+    padding: 4px 8px;
+    z-index: 4;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+/* Region-specific background colors */
+.regional-badge[data-region="US"] {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.regional-badge[data-region="IN"] {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+.regional-badge[data-region="KR"] {
+    background: linear-gradient(135deg, #ec4899, #db2777);
+}
+
+.regional-badge[data-region="JP"] {
+    background: linear-gradient(135deg, #a855f7, #9333ea);
+}
+
+.regional-badge[data-region="CN"],
+.regional-badge[data-region="HK"],
+.regional-badge[data-region="TW"] {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.regional-badge[data-region="FR"] {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+.regional-badge[data-region="ES"],
+.regional-badge[data-region="MX"] {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.regional-badge[data-region="TH"] {
+    background: linear-gradient(135deg, #d946ef, #c026d3);
+}
+
+.regional-badge[data-region="TR"] {
+    background: linear-gradient(135deg, #c026d3, #a21caf);
+}
+
+.regional-badge[data-region="GB"] {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.item-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top,
+            rgba(0, 0, 0, 0.9) 0%,
+            rgba(0, 0, 0, 0.4) 50%,
+            transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.watched-item-card:hover .item-overlay {
+    opacity: 1;
+}
+
+.remove-button {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: rgba(239, 68, 68, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    opacity: 0;
+}
+
+.watched-item-card:hover .remove-button {
+    opacity: 1;
+}
+
+.remove-button:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 1);
+    transform: scale(1.15) rotate(90deg);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.5);
+}
+
+.remove-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Mark as Watched Button */
+.move-to-watched-button {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    backdrop-filter: blur(10px);
+}
+
+.watched-item-card:hover .move-to-watched-button {
+    opacity: 1;
+}
+
+.move-to-watched-button:hover {
+    transform: scale(1.15);
+    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.5);
+}
+
+.item-details {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.item-title {
+    font-weight: 700;
+    font-size: 0.9375rem;
+    color: var(--text-color);
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.4;
+}
+
+.item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.item-year {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.item-category {
+    padding: 0.25rem 0.625rem;
+    border-radius: 6px;
+    font-weight: 700;
+    text-transform: capitalize;
+    font-size: 0.6875rem;
+    background: linear-gradient(135deg, var(--category-color, #64748b), var(--category-color-dark, #475569));
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Category badge colors */
+.item-category.movies {
+    --category-color: #ef4444;
+    --category-color-dark: #dc2626;
+}
+
+.item-category.animated {
+    --category-color: #22c55e;
+    --category-color-dark: #16a34a;
+}
+
+.item-category.cartoon {
+    --category-color: #f59e0b;
+    --category-color-dark: #d97706;
+}
+
+.item-category.anime {
+    --category-color: #a855f7;
+    --category-color-dark: #9333ea;
+}
+
+.item-category.kdrama {
+    --category-color: #ec4899;
+    --category-color-dark: #db2777;
+}
+
+.item-category.shows {
+    --category-color: #3b82f6;
+    --category-color-dark: #2563eb;
+}
+
+/* Confirmation Dialog */
+.confirm-dialog {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    z-index: 10;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.confirm-text {
+    color: white;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.5;
+}
+
+.confirm-buttons {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.confirm-button {
+    padding: 0.625rem 1.25rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+}
+
+.confirm-button.cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.confirm-button.cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.confirm-button.remove {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+}
+
+.confirm-button.remove:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+    .watched-item-card {
+        border-radius: 12px;
+    }
+
+    .item-poster {
+        padding-bottom: 145%;
+    }
+
+    .category-ribbon {
+        font-size: 0.625rem;
+        padding: 4px 35px;
+        top: 10px;
+        right: -32px;
+    }
+
+    .regional-badge {
+        font-size: 1.25rem;
+        padding: 4px 8px;
+    }
+
+    .item-details {
+        padding: 0.75rem;
+    }
+
+    .item-title {
+        font-size: 0.875rem;
+    }
+
+    .remove-button,
+    .move-to-watched-button {
+        width: 2rem;
+        height: 2rem;
+        font-size: 1rem;
+    }
+}

@@ -1,0 +1,24 @@
+/* Dual Action Buttons */
+.result-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.add-button.watched {
+    flex: 1;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.add-button.watched:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.add-button.watchlist {
+    flex: 1;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+}
+
+.add-button.watchlist:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
