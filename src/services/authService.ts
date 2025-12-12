@@ -8,8 +8,9 @@ import {
     type User,
     sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, setDoc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../config/firebase';
+import { ref, set, update, runTransaction, serverTimestamp as rtdbTimestamp } from 'firebase/database';
+import { auth, rtdb, googleProvider } from '../config/firebase';
+import installTrackingService from './installTrackingService';
 
 class AuthService {
     /**
@@ -40,6 +41,10 @@ class AuthService {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             await this.updateLastLogin(userCredential.user.uid);
+
+            // Link current install to this user
+            await installTrackingService.linkToUser(userCredential.user.uid);
+
             return userCredential.user;
         } catch (error: any) {
             console.error('Sign in error:', error);
@@ -58,6 +63,9 @@ class AuthService {
             // Check if user document exists, create if not
             await this.createUserDocument(user, user.displayName || '');
             await this.updateLastLogin(user.uid);
+
+            // Link current install to this user
+            await installTrackingService.linkToUser(user.uid);
 
             return user;
         } catch (error: any) {
@@ -91,22 +99,22 @@ class AuthService {
     }
 
     /**
-     * Create user document in Firestore
+     * Create user document in RTDB
      */
     private async createUserDocument(user: User, displayName: string): Promise<void> {
-        const userRef = doc(db, 'users', user.uid);
+        const userRef = ref(rtdb, `users/${user.uid}`);
 
         const deviceInfo = this.getDeviceInfo();
         const installRef = this.getOrCreateInstallRef();
 
         try {
-            await setDoc(userRef, {
+            await set(userRef, {
                 uid: user.uid,
                 email: user.email,
                 displayName: displayName || user.displayName || '',
                 photoURL: user.photoURL || '',
-                createdAt: serverTimestamp(),
-                lastLogin: serverTimestamp(),
+                createdAt: rtdbTimestamp(),
+                lastLogin: rtdbTimestamp(),
                 deviceInfo,
                 installRef,
                 preferences: {
@@ -119,9 +127,12 @@ class AuthService {
                     totalItems: 0,
                     totalMovies: 0,
                     totalShows: 0,
-                    lastActive: serverTimestamp()
+                    lastActive: rtdbTimestamp()
                 }
-            }, { merge: true });
+            });
+
+            // Link install to user
+            await installTrackingService.linkToUser(user.uid);
 
             // Increment user count in dashboard metrics
             await this.incrementMetric('userCount');
@@ -137,10 +148,10 @@ class AuthService {
      */
     private async updateLastLogin(uid: string): Promise<void> {
         try {
-            const userRef = doc(db, 'users', uid);
-            await updateDoc(userRef, {
-                lastLogin: serverTimestamp(),
-                'stats.lastActive': serverTimestamp()
+            const userRef = ref(rtdb, `users/${uid}`);
+            await update(userRef, {
+                lastLogin: rtdbTimestamp(),
+                'stats/lastActive': rtdbTimestamp()
             });
         } catch (error) {
             console.error('Error updating last login:', error);
@@ -177,11 +188,24 @@ class AuthService {
      */
     private async incrementMetric(metric: string): Promise<void> {
         try {
-            const metricsRef = doc(db, 'dashboard', 'metrics');
-            await setDoc(metricsRef, {
-                [metric]: increment(1),
-                lastUpdated: serverTimestamp()
-            }, { merge: true });
+            const metricsRef = ref(rtdb, 'dashboard/metrics');
+            await runTransaction(metricsRef, (currentData) => {
+                if (currentData === null) {
+                    const initialData: any = {
+                        installCount: 0,
+                        userCount: 0,
+                        monthlyActiveUsers: 0,
+                        lastUpdated: rtdbTimestamp()
+                    };
+                    initialData[metric] = 1;
+                    return initialData;
+                }
+                return {
+                    ...currentData,
+                    [metric]: (currentData[metric] || 0) + 1,
+                    lastUpdated: rtdbTimestamp()
+                };
+            });
         } catch (error) {
             console.error('Error incrementing metric:', error);
         }
@@ -193,14 +217,23 @@ class AuthService {
     private async incrementDailySignup(): Promise<void> {
         try {
             const today = new Date().toISOString().split('T')[0];
-            // Store analytics as top-level documents in 'analytics' collection
-            // Document ID is the date (e.g., '2025-12-12')
-            const analyticsRef = doc(db, 'analytics', today);
-            await setDoc(analyticsRef, {
-                date: today,
-                signups: increment(1),
-                timestamp: serverTimestamp()
-            }, { merge: true });
+            const analyticsRef = ref(rtdb, `analytics/daily/${today}`);
+
+            await runTransaction(analyticsRef, (currentData) => {
+                if (currentData === null) {
+                    return {
+                        date: today,
+                        signups: 1,
+                        installs: 0,
+                        timestamp: rtdbTimestamp()
+                    };
+                }
+                return {
+                    ...currentData,
+                    signups: (currentData.signups || 0) + 1,
+                    timestamp: rtdbTimestamp()
+                };
+            });
         } catch (error) {
             console.error('Error incrementing daily signup:', error);
         }

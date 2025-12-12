@@ -156,7 +156,7 @@ const ProfilePage: React.FC = () => {
                             <p>{user.email}</p>
                             {userDoc?.createdAt && (
                                 <span className="join-date">
-                                    Member since {new Date(userDoc.createdAt.toDate()).toLocaleDateString()}
+                                    Member since {new Date(userDoc.createdAt).toLocaleDateString()}
                                 </span>
                             )}
                             {isAdmin && (

@@ -1,5 +1,5 @@
-import { doc, setDoc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { ref, set, update, runTransaction, serverTimestamp as rtdbTimestamp } from 'firebase/database';
+import { rtdb } from '../config/firebase';
 
 interface DeviceInfo {
     userAgent: string;
@@ -51,11 +51,11 @@ class InstallTrackingService {
         const deviceInfo = this.getDeviceInfo();
 
         try {
-            const installRef = doc(db, 'installs', this.installId);
-            await setDoc(installRef, {
+            const installRef = ref(rtdb, `installs/${this.installId}`);
+            await set(installRef, {
                 installId: this.installId,
-                installedAt: serverTimestamp(),
-                lastActive: serverTimestamp(),
+                installedAt: rtdbTimestamp(),
+                lastActive: rtdbTimestamp(),
                 deviceInfo,
                 version: '1.0.0',
                 userId: null // Will be linked when user signs in
@@ -79,13 +79,16 @@ class InstallTrackingService {
     /**
      * Update last active timestamp
      */
+    /**
+     * Update last active timestamp
+     */
     async updateLastActive(): Promise<void> {
         if (!this.installId) return;
 
         try {
-            const installRef = doc(db, 'installs', this.installId);
-            await updateDoc(installRef, {
-                lastActive: serverTimestamp()
+            const installRef = ref(rtdb, `installs/${this.installId}`);
+            await update(installRef, {
+                lastActive: rtdbTimestamp()
             });
         } catch (error) {
             console.error('Error updating last active:', error);
@@ -95,14 +98,17 @@ class InstallTrackingService {
     /**
      * Link installation to user account
      */
+    /**
+     * Link installation to user account
+     */
     async linkToUser(userId: string): Promise<void> {
         if (!this.installId) return;
 
         try {
-            const installRef = doc(db, 'installs', this.installId);
-            await updateDoc(installRef, {
+            const installRef = ref(rtdb, `installs/${this.installId}`);
+            await update(installRef, {
                 userId,
-                linkedAt: serverTimestamp()
+                linkedAt: rtdbTimestamp()
             });
 
             console.log('Installation linked to user:', userId);
@@ -132,11 +138,22 @@ class InstallTrackingService {
      */
     private async incrementInstallCount(): Promise<void> {
         try {
-            const metricsRef = doc(db, 'dashboard', 'metrics');
-            await setDoc(metricsRef, {
-                installCount: increment(1),
-                lastUpdated: serverTimestamp()
-            }, { merge: true });
+            const metricsRef = ref(rtdb, 'dashboard/metrics');
+            await runTransaction(metricsRef, (currentData) => {
+                if (currentData === null) {
+                    return {
+                        installCount: 1,
+                        userCount: 0,
+                        monthlyActiveUsers: 0,
+                        lastUpdated: rtdbTimestamp()
+                    };
+                }
+                return {
+                    ...currentData,
+                    installCount: (currentData.installCount || 0) + 1,
+                    lastUpdated: rtdbTimestamp()
+                };
+            });
         } catch (error) {
             console.error('Error incrementing install count:', error);
         }
@@ -148,12 +165,23 @@ class InstallTrackingService {
     private async incrementDailyInstall(): Promise<void> {
         try {
             const today = new Date().toISOString().split('T')[0];
-            const analyticsRef = doc(db, 'analytics', 'daily', today);
-            await setDoc(analyticsRef, {
-                date: today,
-                installs: increment(1),
-                timestamp: serverTimestamp()
-            }, { merge: true });
+            const analyticsRef = ref(rtdb, `analytics/daily/${today}`);
+
+            await runTransaction(analyticsRef, (currentData) => {
+                if (currentData === null) {
+                    return {
+                        date: today,
+                        installs: 1,
+                        signups: 0,
+                        timestamp: rtdbTimestamp()
+                    };
+                }
+                return {
+                    ...currentData,
+                    installs: (currentData.installs || 0) + 1,
+                    timestamp: rtdbTimestamp()
+                };
+            });
         } catch (error) {
             console.error('Error incrementing daily install:', error);
         }

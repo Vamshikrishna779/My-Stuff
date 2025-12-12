@@ -11,8 +11,8 @@ import {
     Smartphone,
     RefreshCw
 } from 'lucide-react';
-import { doc, collection, onSnapshot, query, orderBy, limit, type Unsubscribe } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { ref, onValue, query, orderByChild, limitToLast, type DataSnapshot, off } from 'firebase/database';
+import { rtdb } from '../config/firebase';
 import './AdminDashboard.css';
 
 interface Metrics {
@@ -61,92 +61,94 @@ const AdminDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribers: Unsubscribe[] = [];
 
-        // Listen to dashboard metrics
-        const metricsRef = doc(db, 'dashboard', 'metrics');
-        const unsubMetrics = onSnapshot(
-            metricsRef,
-            (doc) => {
-                if (doc.exists()) {
-                    setMetrics(doc.data() as Metrics);
-                }
-                setLoading(false);
-            },
-            (error) => {
-                console.error('Error listening to metrics:', error);
-                setLoading(false);
+        // 1. Listen to dashboard metrics (RTDB)
+        const metricsRef = ref(rtdb, 'dashboard/metrics');
+        const handleMetrics = (snapshot: DataSnapshot) => {
+            if (snapshot.exists()) {
+                setMetrics(snapshot.val() as Metrics);
             }
-        );
-        unsubscribers.push(unsubMetrics);
+            setLoading(false);
+        };
+        onValue(metricsRef, handleMetrics, (error) => {
+            console.error('Error listening to metrics:', error);
+            setLoading(false);
+        });
 
-        // Listen to recent users
-        const usersQuery = query(
-            collection(db, 'users'),
-            orderBy('createdAt', 'desc'),
-            limit(20)
-        );
-        const unsubUsers = onSnapshot(
-            usersQuery,
-            (snapshot) => {
-                const users = snapshot.docs.map(doc => ({
-                    uid: doc.id,
-                    ...doc.data()
-                })) as RecentUser[];
-                setRecentUsers(users);
-            },
-            (error) => {
-                console.error('Error listening to users:', error);
-            }
-        );
-        unsubscribers.push(unsubUsers);
-
-        // Listen to recent installs
-        const installsQuery = query(
-            collection(db, 'installs'),
-            orderBy('installedAt', 'desc'),
-            limit(20)
-        );
-        const unsubInstalls = onSnapshot(
-            installsQuery,
-            (snapshot) => {
-                const installs = snapshot.docs.map(doc => ({
-                    installId: doc.id,
-                    ...doc.data()
-                })) as RecentInstall[];
-                setRecentInstalls(installs);
-            },
-            (error) => {
-                console.error('Error listening to installs:', error);
-            }
-        );
-        unsubscribers.push(unsubInstalls);
-
-        // Listen to daily analytics (last 30 days)
-        // Note: Analytics are stored as top-level documents in 'analytics' collection
-        // with date as document ID (e.g., 'analytics/2025-12-12')
-        const analyticsQuery = query(
-            collection(db, 'analytics'),
-            orderBy('date', 'desc'),
-            limit(30)
-        );
-        const unsubAnalytics = onSnapshot(
-            analyticsQuery,
-            (snapshot) => {
-                const analytics = snapshot.docs.map(doc => doc.data()) as DailyAnalytics[];
-                setDailyAnalytics(analytics.reverse());
-            },
-            (error) => {
-                console.error('Error listening to analytics:', error);
-                // Don't break the dashboard if analytics collection doesn't exist yet
+        // 2. Listen to daily analytics (RTDB) - Get all and slice last 30
+        const analyticsRef = ref(rtdb, 'analytics/daily');
+        const handleAnalytics = (snapshot: DataSnapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                const analyticsArray = Object.values(data) as DailyAnalytics[];
+                // Sort by date and take last 30
+                const sorted = analyticsArray.sort((a, b) =>
+                    new Date(a.date).getTime() - new Date(b.date).getTime()
+                );
+                setDailyAnalytics(sorted.slice(-30));
+            } else {
                 setDailyAnalytics([]);
             }
+        };
+        onValue(analyticsRef, handleAnalytics, (error) => {
+            console.error('Error listening to analytics:', error);
+        });
+
+        // 3. Listen to recent users (RTDB)
+        const usersRef = query(
+            ref(rtdb, 'users'),
+            orderByChild('createdAt'),
+            limitToLast(20)
         );
-        unsubscribers.push(unsubAnalytics);
+        const handleUsers = (snapshot: DataSnapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                // Convert object to array and reverse to show newest first
+                const users = Object.values(data)
+                    .map((user: any) => ({
+                        ...user,
+                        uid: user.uid // Ensure uid is present
+                    }))
+                    .sort((a: any, b: any) => b.createdAt - a.createdAt);
+                setRecentUsers(users);
+            } else {
+                setRecentUsers([]);
+            }
+        };
+        onValue(usersRef, handleUsers, (error) => {
+            console.error('Error listening to users:', error);
+        });
+
+        // 4. Listen to recent installs (RTDB)
+        const installsRef = query(
+            ref(rtdb, 'installs'),
+            orderByChild('installedAt'),
+            limitToLast(20)
+        );
+        const handleInstalls = (snapshot: DataSnapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                const installs = Object.values(data)
+                    .map((install: any) => ({
+                        ...install,
+                        installId: install.installId || install.id // Mapped from ID
+                    }))
+                    .sort((a: any, b: any) => b.installedAt - a.installedAt);
+                setRecentInstalls(installs);
+            } else {
+                setRecentInstalls([]);
+            }
+        };
+        onValue(installsRef, handleInstalls, (error) => {
+            console.error('Error listening to installs:', error);
+        });
 
         // Cleanup all listeners
         return () => {
-            unsubscribers.forEach(unsub => unsub());
+            off(metricsRef, 'value', handleMetrics);
+            off(analyticsRef, 'value', handleAnalytics);
+            off(usersRef, 'value', handleUsers);
+            off(installsRef, 'value', handleInstalls);
         };
     }, []);
 
@@ -415,7 +417,7 @@ const AdminDashboard: React.FC = () => {
                         <tbody>
                             {recentInstalls.map(install => (
                                 <tr key={install.installId}>
-                                    <td className="mono-cell">{install.installId.substring(0, 20)}...</td>
+                                    <td className="mono-cell">{(install.installId || 'unknown').substring(0, 20)}...</td>
                                     <td>
                                         <span className="platform-badge">
                                             <Smartphone size={14} />

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { type User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { ref, onValue, off } from 'firebase/database';
+import { rtdb } from '../config/firebase';
 import authService from '../services/authService';
 
 interface UserDocument {
@@ -13,7 +13,7 @@ interface UserDocument {
     lastLogin: any;
     deviceInfo: any;
     installRef?: string;
-    admin?: boolean; // Admin status from Firestore
+    admin?: boolean; // Admin status
     preferences?: {
         theme: string;
         compactMode: boolean;
@@ -57,28 +57,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser(user);
 
             if (user) {
-                // Listen to user document changes in real-time
-                const userRef = doc(db, 'users', user.uid);
-                const unsubscribeDoc = onSnapshot(
-                    userRef,
-                    (doc) => {
-                        if (doc.exists()) {
-                            const userData = doc.data() as UserDocument;
-                            setUserDoc(userData);
-                            // Check admin status from Firestore document
-                            setIsAdmin(!!userData.admin);
-                        }
-                    },
-                    (error) => {
-                        console.error('Error listening to user document:', error);
+                // Listen to user document changes in real-time (RTDB)
+                const userRef = ref(rtdb, `users/${user.uid}`);
+                const handleUserDoc = (snapshot: any) => {
+                    if (snapshot.exists()) {
+                        const userData = snapshot.val() as UserDocument;
+                        setUserDoc(userData);
+                        // Check admin status from RTDB document
+                        setIsAdmin(!!userData.admin);
+                    } else {
+                        // Document might not be created yet (race condition with signup)
+                        // Or migrating user prevents it
+                        setUserDoc(null);
+                        setIsAdmin(false);
                     }
-                );
+                };
+
+                onValue(userRef, handleUserDoc, (error) => {
+                    console.error('Error listening to user document:', error);
+                });
 
                 setLoading(false);
 
                 // Cleanup function for user document listener
                 return () => {
-                    unsubscribeDoc();
+                    off(userRef, 'value', handleUserDoc);
                 };
             } else {
                 setUserDoc(null);
