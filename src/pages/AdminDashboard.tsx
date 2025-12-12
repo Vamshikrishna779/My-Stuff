@@ -597,8 +597,18 @@ const AdminDashboard: React.FC = () => {
                             <PieChart>
                                 <Pie
                                     data={[
-                                        { name: 'Mobile', value: recentInstalls.filter(i => !i.deviceInfo.platform.toLowerCase().includes('win') && !i.deviceInfo.platform.toLowerCase().includes('mac')).length },
-                                        { name: 'Desktop', value: recentInstalls.filter(i => i.deviceInfo.platform.toLowerCase().includes('win') || i.deviceInfo.platform.toLowerCase().includes('mac')).length },
+                                        {
+                                            name: 'Mobile', value: recentInstalls.filter(i => {
+                                                const p = (i.deviceInfo?.platform || '').toLowerCase();
+                                                return !p.includes('win') && !p.includes('mac') && !p.includes('linux');
+                                            }).length
+                                        },
+                                        {
+                                            name: 'Desktop', value: recentInstalls.filter(i => {
+                                                const p = (i.deviceInfo?.platform || '').toLowerCase();
+                                                return p.includes('win') || p.includes('mac') || p.includes('linux');
+                                            }).length
+                                        },
                                     ]}
                                     innerRadius={40}
                                     outerRadius={60}

@@ -19,18 +19,33 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
+    const validateEmail = (email: string) => {
+        // Strict email validation regex
+        const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return re.test(String(email).toLowerCase());
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+
+        if (!validateEmail(email)) {
+            setError('Please enter a valid email address.');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
             if (isLogin) {
                 await signIn(email, password);
+                onClose();
             } else {
                 await signUp(email, password, displayName);
+                alert('Account created! A verification link has been sent to your email.');
+                onClose();
             }
-            onClose();
+
             // Reset form
             setEmail('');
             setPassword('');

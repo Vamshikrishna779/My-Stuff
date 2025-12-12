@@ -6,7 +6,8 @@ import {
     onAuthStateChanged,
     updateProfile,
     type User,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    sendEmailVerification
 } from 'firebase/auth';
 import { ref, set, get, update, runTransaction, serverTimestamp as rtdbTimestamp } from 'firebase/database';
 import { auth, rtdb, googleProvider } from '../config/firebase';
@@ -23,6 +24,9 @@ class AuthService {
 
             // Update profile with display name
             await updateProfile(user, { displayName });
+
+            // Send verification email
+            await sendEmailVerification(user);
 
             // Create Firestore user document
             await this.createUserDocument(user, displayName);
