@@ -39,10 +39,12 @@ interface ProcessedItem {
 }
 
 class TMDbService {
-    private apiKey: string = 'ad2987c3763f78fc22d170d0baedbfc3';
+    private apiKey: string = import.meta.env.VITE_TMDB_API_KEY || '';
 
     constructor() {
-        // API key is now hardcoded
+        if (!this.apiKey) {
+            console.warn('TMDb API key is missing. Check your environment variables.');
+        }
     }
 
     // Deprecated but kept for compatibility if needed, though effectively no-op or read-only
