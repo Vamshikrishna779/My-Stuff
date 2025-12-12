@@ -25,15 +25,18 @@ class InstallTrackingService {
             const tracked = localStorage.getItem('installTracked');
             this.installId = localStorage.getItem('installRef');
 
+            if (!this.installId) {
+                // Generate ID silently, but don't track yet
+                this.installId = `install_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                localStorage.setItem('installRef', this.installId);
+            }
+
             if (tracked && this.installId) {
                 // Just update last active
                 await this.updateLastActive();
-                this.initialized = true;
-                return;
             }
+            // If not tracked, we do nothing. We wait for trackInstall() to be called.
 
-            // Create new install tracking
-            await this.trackNewInstallation();
             this.initialized = true;
         } catch (error) {
             console.error('Error initializing install tracking:', error);
@@ -41,12 +44,19 @@ class InstallTrackingService {
     }
 
     /**
-     * Track a new installation
+     * Explicitly track a new installation. This should be called when a PWA is installed or first launched.
      */
-    private async trackNewInstallation(): Promise<void> {
-        // Generate unique install ID
-        this.installId = `install_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem('installRef', this.installId);
+    async trackInstall(): Promise<void> {
+        if (localStorage.getItem('installTracked')) {
+            console.log('Installation already tracked.');
+            return;
+        }
+
+        // Generate unique install ID if not already present
+        if (!this.installId) {
+            this.installId = `install_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem('installRef', this.installId);
+        }
 
         const deviceInfo = this.getDeviceInfo();
 
@@ -69,16 +79,14 @@ class InstallTrackingService {
 
             // Mark as tracked
             localStorage.setItem('installTracked', 'true');
+            localStorage.setItem('lastActive', Date.now().toString()); // Set initial last active time
 
-            console.log('Installation tracked:', this.installId);
+            console.log('PWA Installation tracked:', this.installId);
         } catch (error) {
-            console.error('Error tracking installation:', error);
+            console.error('Error tracking PWA installation:', error);
         }
     }
 
-    /**
-     * Update last active timestamp
-     */
     /**
      * Update last active timestamp
      */

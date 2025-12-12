@@ -33,7 +33,18 @@ const router = createBrowserRouter([
     },
 ]);
 
+import { useEffect } from 'react';
+import installTrackingService from './services/installTrackingService';
+
 function App() {
+    useEffect(() => {
+        const handleAppInstalled = () => {
+            installTrackingService.trackInstall();
+        };
+        window.addEventListener('appinstalled', handleAppInstalled);
+        return () => window.removeEventListener('appinstalled', handleAppInstalled);
+    }, []);
+
     return (
         <AuthProvider>
             <InstallPrompt />
