@@ -39,4 +39,4 @@ A premium personal entertainment tracker designed to help you organize movies, s
 
 ## Copyright
 
-© 2025Vamshikrishna. All rights reserved.
+© 2025 Vamshikrishna. All rights reserved.
