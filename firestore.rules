@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // Helper Functions
+    // ============================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Check if user has admin custom claim
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+    
+    // Check if user owns the resource
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+    
+    // Check if data is being created (not updated)
+    function isCreating() {
+      return !exists(/databases/$(database)/documents/$(request.path));
+    }
+    
+    // ============================================
+    // Users Collection
+    // ============================================
+    
+    match /users/{uid} {
+      // Users can read their own data, admins can read all
+      allow read: if isOwner(uid) || isAdmin();
+      
+      // Users can only write to their own document
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      
+      // Only admins can delete user documents
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Installs Collection
+    // ============================================
+    
+    match /installs/{installId} {
+      // Only admins can read install data
+      allow read: if isAdmin();
+      
+      // Anyone can create an install document (for tracking)
+      allow create: if true;
+      
+      // Anyone can update their install's last active time
+      allow update: if true;
+      
+      // Only admins can delete install documents
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Dashboard Collection (Admin Only)
+    // ============================================
+    
+    match /dashboard/{document=**} {
+      // Only admins can read dashboard data
+      allow read: if isAdmin();
+      
+      // Only admins can write dashboard data
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // Analytics Collection (Admin Read, Functions Write)
+    // ============================================
+    
+    match /analytics/{document=**} {
+      // Only admins can read analytics
+      allow read: if isAdmin();
+      
+      // No one can write directly (only Cloud Functions)
+      allow write: if false;
+    }
+    
+    // ============================================
+    // Watched Items Collection (User-Specific)
+    // ============================================
+    
+    match /watchedItems/{userId}/items/{itemId} {
+      // Users can read/write their own watched items
+      allow read, write: if isOwner(userId);
+      
+      // Admins can read all watched items
+      allow read: if isAdmin();
+    }
+    
+    // Alternative structure if using flat collection
+    match /watchedItems/{itemId} {
+      // Users can only access items they created
+      allow read, write: if isAuthenticated() && 
+                            resource.data.userId == request.auth.uid;
+      
+      // Allow creation if userId matches auth
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid;
+      
+      // Admins can read all
+      allow read: if isAdmin();
+    }
+    
+    // ============================================
+    // User Preferences (Optional)
+    // ============================================
+    
+    match /preferences/{uid} {
+      allow read, write: if isOwner(uid);
+      allow read: if isAdmin();
+    }
+    
+    // ============================================
+    // Deny all other paths by default
+    // ============================================
+  }
+}

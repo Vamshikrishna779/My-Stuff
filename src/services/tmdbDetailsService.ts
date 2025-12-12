@@ -94,7 +94,7 @@ export interface Images {
     posters: Image[];
 }
 
-export interface SimilarItem {
+export interface RecommendationItem {
     id: number;
     title?: string;
     name?: string;
@@ -102,10 +102,12 @@ export interface SimilarItem {
     vote_average: number;
     release_date?: string;
     first_air_date?: string;
+    overview: string;
+    media_type?: string;
 }
 
-export interface SimilarResults {
-    results: SimilarItem[];
+export interface RecommendationResults {
+    results: RecommendationItem[];
 }
 
 export interface DetailedItemData {
@@ -113,7 +115,7 @@ export interface DetailedItemData {
     credits: Credits;
     videos: Videos;
     images: Images;
-    similar: SimilarResults;
+    recommendations: RecommendationResults;
 }
 
 class TMDbDetailsService {
@@ -135,7 +137,7 @@ class TMDbDetailsService {
 
         try {
             const response = await fetch(
-                `${TMDB_BASE_URL}/movie/${id}?api_key=${apiKey}&append_to_response=credits,videos,images,similar`
+                `${TMDB_BASE_URL}/movie/${id}?api_key=${apiKey}&append_to_response=credits,videos,images,recommendations`
             );
 
             if (!response.ok) {
@@ -149,7 +151,7 @@ class TMDbDetailsService {
                 credits: data.credits,
                 videos: data.videos,
                 images: data.images,
-                similar: data.similar
+                recommendations: data.recommendations
             };
         } catch (error) {
             console.error('Error fetching movie details:', error);
@@ -158,14 +160,14 @@ class TMDbDetailsService {
     }
 
     /**
-     * Fetch complete details for a TV show including credits, videos, images, and similar items
+     * Fetch complete details for a TV show including credits, videos, images, and recommendations
      */
     async getTVDetails(id: number): Promise<DetailedItemData> {
         const apiKey = this.getApiKey();
 
         try {
             const response = await fetch(
-                `${TMDB_BASE_URL}/tv/${id}?api_key=${apiKey}&append_to_response=credits,videos,images,similar`
+                `${TMDB_BASE_URL}/tv/${id}?api_key=${apiKey}&append_to_response=credits,videos,images,recommendations`
             );
 
             if (!response.ok) {
@@ -179,7 +181,7 @@ class TMDbDetailsService {
                 credits: data.credits,
                 videos: data.videos,
                 images: data.images,
-                similar: data.similar
+                recommendations: data.recommendations
             };
         } catch (error) {
             console.error('Error fetching TV details:', error);

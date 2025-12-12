@@ -16,6 +16,7 @@ interface ItemDetailsModalProps {
     onClose: () => void;
     onUpdate: (id: number, data: any) => Promise<void>;
     onAddSimilar?: (item: any) => Promise<void>;
+    onNavigate?: (item: WatchedItem) => void;
 }
 
 const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
@@ -23,7 +24,8 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
     isOpen,
     onClose,
     onUpdate,
-    onAddSimilar
+    onAddSimilar,
+    onNavigate
 }) => {
     const [detailsData, setDetailsData] = useState<DetailedItemData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -131,9 +133,26 @@ const ItemDetailsModal: React.FC<ItemDetailsModalProps> = ({
                                     />
 
                                     <SimilarItemsSection
-                                        similar={detailsData.similar}
+                                        recommendations={detailsData.recommendations}
                                         mediaType={item.type as 'movie' | 'tv'}
                                         onAdd={onAddSimilar}
+                                        onCardClick={(id, type) => {
+                                            if (onNavigate) {
+                                                const tempItem: WatchedItem = {
+                                                    ...item,
+                                                    id: undefined,
+                                                    tmdbId: id,
+                                                    type: type,
+                                                    title: 'Loading...',
+                                                    posterUrl: '',
+                                                    year: '',
+                                                    addedDate: Date.now(),
+                                                    category: 'movies',
+                                                    listType: 'watchlist'
+                                                };
+                                                onNavigate(tempItem);
+                                            }
+                                        }}
                                     />
                                 </>
                             )}

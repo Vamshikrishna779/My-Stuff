@@ -1,45 +1,32 @@
 import React, { useState } from 'react';
-import { Search, Loader2, Film, WifiOff, AlertTriangle, Check, Bookmark } from 'lucide-react';
+import { Search, Loader2, Film, WifiOff, AlertTriangle, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useSearch } from '../hooks/useSearch';
-import { CATEGORIES, CATEGORY_LABELS } from '../utils/constants';
 import './SearchBar.css';
 
 interface SearchBarProps {
-    onAddItem: (item: any) => Promise<void>;
+    onItemClick?: (item: any) => void;
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({ onAddItem }) => {
+const SearchBar: React.FC<SearchBarProps> = ({ onItemClick }) => {
     const { query, setQuery, results, isLoading, error, isOnline, clearResults } = useSearch();
     const [showResults, setShowResults] = useState(false);
-    const [addingId, setAddingId] = useState<number | null>(null);
-    const [selectedCategories, setSelectedCategories] = useState<Record<number, string>>({});
+    const navigate = useNavigate();
 
-    const handleCategoryChange = (tmdbId: number, category: string) => {
-        setSelectedCategories(prev => ({
-            ...prev,
-            [tmdbId]: category
-        }));
+    const handleSelectClick = (e: React.MouseEvent, item: any) => {
+        e.stopPropagation();
+        clearResults();
+        setQuery('');
+        setShowResults(false);
+        navigate('/assign-item', { state: { item } });
     };
 
-    const handleAddClick = async (item: any, listType: 'watched' | 'watchlist' = 'watched') => {
-        setAddingId(item.tmdbId);
-        try {
-            // Use manually selected category if available, otherwise use auto-detected category
-            const categoryToUse = selectedCategories[item.tmdbId] || item.category;
-            const itemToAdd = {
-                ...item,
-                category: categoryToUse,
-                listType // Add listType to the item
-            };
-            await onAddItem(itemToAdd);
+    const handleRowClick = (item: any) => {
+        if (onItemClick) {
+            onItemClick(item);
             clearResults();
-            setShowResults(false);
             setQuery('');
-            setSelectedCategories({});
-        } catch (err: any) {
-            alert(err.message || 'Failed to add item');
-        } finally {
-            setAddingId(null);
+            setShowResults(false);
         }
     };
 
@@ -49,7 +36,6 @@ const SearchBar: React.FC<SearchBarProps> = ({ onAddItem }) => {
     };
 
     const handleBlur = () => {
-        // Delay to allow click on results
         setTimeout(() => setShowResults(false), 300);
     };
 
@@ -58,11 +44,6 @@ const SearchBar: React.FC<SearchBarProps> = ({ onAddItem }) => {
             setShowResults(true);
         }
     };
-
-    // Get selectable categories (exclude 'all')
-    const selectableCategories = Object.entries(CATEGORIES)
-        .filter(([key]) => key !== 'ALL')
-        .map(([key, value]) => ({ key, value, label: CATEGORY_LABELS[value] }));
 
     return (
         <div className="search-container">
@@ -104,7 +85,11 @@ const SearchBar: React.FC<SearchBarProps> = ({ onAddItem }) => {
                 {showResults && results.length > 0 && (
                     <div className="search-results">
                         {results.map(item => (
-                            <div key={item.tmdbId} className="search-result-item">
+                            <div
+                                key={item.tmdbId}
+                                className="search-result-item"
+                                onClick={() => handleRowClick(item)}
+                            >
                                 <div className="result-poster">
                                     {item.posterUrl ? (
                                         <img src={item.posterUrl} alt={item.title} />
@@ -122,42 +107,16 @@ const SearchBar: React.FC<SearchBarProps> = ({ onAddItem }) => {
                                             {item.category}
                                         </span>
                                     </div>
-                                    <div className="category-selector">
-                                        <select
-                                            id={`category-${item.tmdbId}`}
-                                            className="category-select"
-                                            value={selectedCategories[item.tmdbId] || item.category}
-                                            onChange={(e) => handleCategoryChange(item.tmdbId, e.target.value)}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                        >
-                                            {selectableCategories.map(cat => (
-                                                <option key={cat.value} value={cat.value}>
-                                                    {cat.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
                                 </div>
 
-                                {/* Dual Action Buttons */}
                                 <div className="result-actions">
                                     <button
-                                        className="add-button watched"
-                                        onClick={() => handleAddClick(item, 'watched')}
-                                        disabled={addingId === item.tmdbId}
-                                        title="Add to Watched"
+                                        className="select-button"
+                                        onClick={(e) => handleSelectClick(e, item)}
+                                        title="Select Item"
                                     >
-                                        <Check size={16} />
-                                        <span>Watched</span>
-                                    </button>
-                                    <button
-                                        className="add-button watchlist"
-                                        onClick={() => handleAddClick(item, 'watchlist')}
-                                        disabled={addingId === item.tmdbId}
-                                        title="Add to Watchlist"
-                                    >
-                                        <Bookmark size={16} />
-                                        <span>Watchlist</span>
+                                        <span>Select</span>
+                                        <ArrowRight size={16} />
                                     </button>
                                 </div>
                             </div>

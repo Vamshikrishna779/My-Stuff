@@ -2,6 +2,16 @@
     margin-bottom: 2rem;
 }
 
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
 .similar-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -12,6 +22,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    cursor: pointer;
+    position: relative;
 }
 
 .similar-poster {
@@ -34,49 +46,59 @@
     object-fit: cover;
 }
 
+.similar-actions {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    opacity: 1;
+    /* Always visible as requested */
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.similar-action-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    color: white;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+    padding: 0;
+}
+
+.similar-action-button:hover {
+    transform: scale(1.1);
+    background: rgba(0, 0, 0, 0.9);
+}
+
+.similar-action-button.watched:hover,
+.similar-action-button.watched.active {
+    background: #22c55e;
+}
+
+.similar-action-button.watchlist:hover,
+.similar-action-button.watchlist.active {
+    background: #3b82f6;
+}
+
 .similar-placeholder {
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 3rem;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    opacity: 0.3;
-}
-
-.similar-add-button {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    width: 32px;
-    height: 32px;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    border: none;
-    border-radius: 50%;
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    opacity: 0;
-    transition: all 0.2s ease;
-}
-
-.similar-card:hover .similar-add-button {
-    opacity: 1;
-}
-
-.similar-add-button:hover {
-    background: var(--primary-color);
-    transform: scale(1.1);
-}
-
-.similar-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    background: var(--surface-color);
+    color: var(--text-secondary);
 }
 
 .similar-title {
@@ -88,6 +110,7 @@
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     line-height: 1.3;
 }
@@ -118,5 +141,11 @@
     .similar-year,
     .similar-rating {
         font-size: 0.75rem;
+    }
+
+    .similar-action-button {
+        width: 28px;
+        height: 28px;
+        font-size: 0.875rem;
     }
 }

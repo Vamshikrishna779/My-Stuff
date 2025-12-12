@@ -7,34 +7,24 @@ interface WatchedItemCardProps {
     item: WatchedItem;
     onRemove: (id: number) => Promise<void>;
     onCardClick?: () => void;
-    onMoveToWatched?: (id: number) => Promise<void>; // NEW: Move from watchlist to watched
+    onMoveToWatched?: (id: number) => Promise<void>;
 }
 
 const WatchedItemCard: React.FC<WatchedItemCardProps> = ({ item, onRemove, onCardClick, onMoveToWatched }) => {
     const [isRemoving, setIsRemoving] = useState(false);
-    const [showConfirm, setShowConfirm] = useState(false);
 
-    const handleRemoveClick = () => {
-        setShowConfirm(true);
-    };
-
-    const handleConfirmRemove = async () => {
+    const handleRemoveClick = async () => {
         setIsRemoving(true);
         try {
             await onRemove(item.id!);
         } catch (err) {
-            alert('Failed to remove item');
+            console.error('Failed to remove item', err);
             setIsRemoving(false);
-            setShowConfirm(false);
         }
     };
 
-    const handleCancelRemove = () => {
-        setShowConfirm(false);
-    };
-
     const handleMoveToWatched = async (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent card click
+        e.stopPropagation();
         if (!item.id || !onMoveToWatched) return;
 
         try {
@@ -45,11 +35,7 @@ const WatchedItemCard: React.FC<WatchedItemCardProps> = ({ item, onRemove, onCar
     };
 
     return (
-        <div
-            className={`watched-item-card ${isRemoving ? 'removing' : ''}`}
-            onClick={onCardClick}
-            style={{ cursor: onCardClick ? 'pointer' : 'default' }}
-        >
+        <div className={`watched-item-card ${isRemoving ? 'removing' : ''}`}>
             <div className="item-poster">
                 {item.posterUrl ? (
                     <img src={item.posterUrl} alt={item.title} loading="lazy" />
@@ -60,21 +46,32 @@ const WatchedItemCard: React.FC<WatchedItemCardProps> = ({ item, onRemove, onCar
                 )}
 
                 {/* Regional Badge */}
+                {/* Regional Badge */}
                 {item.originCountry && (
                     <div className="regional-badge" data-region={item.originCountry}>
-                        {item.originCountry === 'US' && 'Hollywood'}
-                        {item.originCountry === 'IN' && 'Indian'}
-                        {item.originCountry === 'KR' && 'Korean'}
-                        {item.originCountry === 'JP' && 'Japanese'}
-                        {item.originCountry === 'CN' && 'Chinese'}
-                        {item.originCountry === 'HK' && 'Hong Kong'}
-                        {item.originCountry === 'TW' && 'Taiwan'}
-                        {item.originCountry === 'FR' && 'French'}
-                        {item.originCountry === 'ES' && 'Spanish'}
-                        {item.originCountry === 'MX' && 'Mexican'}
-                        {item.originCountry === 'TH' && 'Thai'}
-                        {item.originCountry === 'TR' && 'Turkish'}
-                        {item.originCountry === 'GB' && 'British'}
+                        {(() => {
+                            const regionNames: Record<string, string> = {
+                                'US': 'Hollywood',
+                                'GB': 'British',
+                                'IN': 'Indian',
+                                'KR': 'Korean',
+                                'JP': 'Japanese',
+                                'CN': 'Chinese',
+                                'HK': 'Hong Kong',
+                                'TW': 'Taiwan',
+                                'FR': 'French',
+                                'ES': 'Spanish',
+                                'MX': 'Mexican',
+                                'TH': 'Thai',
+                                'TR': 'Turkish',
+                                'TE': 'Telugu',
+                                'TA': 'Tamil',
+                                'HI': 'Hindi',
+                                'KN': 'Kannada',
+                                'ML': 'Malayalam'
+                            };
+                            return regionNames[item.originCountry] || item.originCountry;
+                        })()}
                     </div>
                 )}
 
@@ -90,7 +87,10 @@ const WatchedItemCard: React.FC<WatchedItemCardProps> = ({ item, onRemove, onCar
                     )}
                     <button
                         className="remove-button"
-                        onClick={(e) => { e.stopPropagation(); handleRemoveClick(); }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveClick();
+                        }}
                         disabled={isRemoving}
                         title="Remove from list"
                     >
@@ -98,8 +98,13 @@ const WatchedItemCard: React.FC<WatchedItemCardProps> = ({ item, onRemove, onCar
                     </button>
                 </div>
             </div>
-            <div className="item-details">
-                <div className="item-title" title={item.title}>
+
+            <div
+                className="item-details"
+                onClick={onCardClick}
+                title="View Details"
+            >
+                <div className="item-title">
                     {item.title}
                 </div>
                 <div className="item-meta">
@@ -109,29 +114,6 @@ const WatchedItemCard: React.FC<WatchedItemCardProps> = ({ item, onRemove, onCar
                     </span>
                 </div>
             </div>
-
-            {showConfirm && (
-                <div className="confirm-dialog">
-                    <div className="confirm-content">
-                        <p className="confirm-text">Remove this item?</p>
-                        <div className="confirm-actions">
-                            <button
-                                className="confirm-button cancel"
-                                onClick={handleCancelRemove}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="confirm-button remove"
-                                onClick={handleConfirmRemove}
-                                disabled={isRemoving}
-                            >
-                                {isRemoving ? '...' : 'Remove'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

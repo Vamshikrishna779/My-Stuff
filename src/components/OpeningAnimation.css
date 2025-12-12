@@ -1,0 +1,91 @@
+.opening-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    perspective: 1000px;
+}
+
+.cylinder-container {
+    position: relative;
+    width: 200px;
+    height: 300px;
+    transform-style: preserve-3d;
+    transform: rotateX(-10deg);
+}
+
+.cylinder {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+}
+
+.poster-face {
+    position: absolute;
+    width: 140px;
+    height: 210px;
+    left: 50%;
+    top: 50%;
+    margin-left: -70px;
+    margin-top: -105px;
+    backface-visibility: hidden;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.poster-face img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.opening-title {
+    position: absolute;
+    bottom: 15%;
+    text-align: center;
+    color: white;
+    z-index: 10;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.opening-title h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(to right, #fff, #aaa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+}
+
+.opening-title p {
+    font-size: 1.1rem;
+    color: #888;
+    margin-top: 0.5rem;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* Overlay gradient to fade edges */
+.opening-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at center, transparent 30%, #000 90%);
+    pointer-events: none;
+    z-index: 5;
+}

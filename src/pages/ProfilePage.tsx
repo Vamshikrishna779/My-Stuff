@@ -11,9 +11,10 @@ import {
     Bell,
     PlayCircle,
     LayoutList,
-    Film,      // ⬅️ added
-    Tv,        // ⬅️ added
+    Film,
+    Tv,
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import storageService from '../services/storageService';
 import AuthModal from '../components/auth/AuthModal';
 import ToggleSwitch from '../components/ui/ToggleSwitch';
@@ -23,13 +24,6 @@ interface ProfileStats {
     total: number;
     movies: number;
     shows: number;
-}
-
-interface UserProfile {
-    name: string;
-    email: string;
-    joinDate?: string;
-    avatar?: string;
 }
 
 interface Preferences {
@@ -42,6 +36,7 @@ const PREF_KEY = 'myStuff_profile_preferences';
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
+    const { user, userDoc, isAdmin, signOut } = useAuth();
 
     const [stats, setStats] = useState<ProfileStats>({ total: 0, movies: 0, shows: 0 });
     const [hasPin, setHasPin] = useState<boolean>(!!localStorage.getItem('app_pin'));
@@ -49,7 +44,6 @@ const ProfilePage: React.FC = () => {
     const [pinInput, setPinInput] = useState('');
 
     // Auth State
-    const [user, setUser] = useState<UserProfile | null>(null);
     const [showAuthModal, setShowAuthModal] = useState(false);
 
     // Preferences State
@@ -59,26 +53,10 @@ const ProfilePage: React.FC = () => {
         notifications: false,
     });
 
-    const [isEditing, setIsEditing] = useState(false);
-    const [editForm, setEditForm] = useState<{ name: string; email: string }>({
-        name: '',
-        email: '',
-    });
-
     useEffect(() => {
         loadStats();
-        checkUser();
         loadPreferences();
     }, []);
-
-    const checkUser = () => {
-        const savedUser = localStorage.getItem('user_profile');
-        if (savedUser) {
-            const parsed: UserProfile = JSON.parse(savedUser);
-            setUser(parsed);
-            setEditForm({ name: parsed.name, email: parsed.email });
-        }
-    };
 
     const loadStats = async () => {
         try {
@@ -135,44 +113,19 @@ const ProfilePage: React.FC = () => {
         }
     };
 
-    const handleLogin = (userData: UserProfile) => {
-        const withJoinDate: UserProfile = {
-            ...userData,
-            joinDate: userData.joinDate || new Date().toLocaleDateString(),
-        };
-        localStorage.setItem('user_profile', JSON.stringify(withJoinDate));
-        setUser(withJoinDate);
-        setEditForm({ name: withJoinDate.name, email: withJoinDate.email });
-    };
-
-    const handleLogout = () => {
-        if (confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem('user_profile');
-            setUser(null);
+    const handleLogout = async () => {
+        if (confirm('Are you sure you want to sign out?')) {
+            try {
+                await signOut();
+                navigate('/');
+            } catch (error) {
+                console.error('Error signing out:', error);
+                alert('Failed to sign out. Please try again.');
+            }
         }
     };
 
-    const handleSaveProfile = () => {
-        if (!user) return;
-        const updatedUser: UserProfile = { ...user, ...editForm };
-        localStorage.setItem('user_profile', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-        setIsEditing(false);
-        alert('Profile updated successfully!');
-    };
 
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file && user) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                const updatedUser: UserProfile = { ...user, avatar: reader.result as string };
-                localStorage.setItem('user_profile', JSON.stringify(updatedUser));
-                setUser(updatedUser);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
 
     return (
         <div className="profile-page">
@@ -185,57 +138,34 @@ const ProfilePage: React.FC = () => {
             </div>
 
             {/* Account Section */}
-            <div className={`profile-card ${isEditing ? 'editing' : ''}`}>
+            <div className="profile-card">
                 <div className="profile-avatar-wrapper">
                     <div className="profile-avatar">
-                        {user?.avatar ? (
-                            <img src={user.avatar} alt="Avatar" className="avatar-img" />
+                        {user?.photoURL ? (
+                            <img src={user.photoURL} alt="Avatar" className="avatar-img" />
                         ) : (
                             <User size={40} />
                         )}
                     </div>
-                    {user && (
-                        <label className="avatar-edit-btn">
-                            <Settings size={16} />
-                            <span>Edit</span>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleAvatarChange}
-                                style={{ display: 'none' }}
-                            />
-                        </label>
-                    )}
                 </div>
 
                 <div className="profile-info">
                     {user ? (
-                        isEditing ? (
-                            <div className="edit-form">
-                                <input
-                                    type="text"
-                                    className="edit-input"
-                                    value={editForm.name}
-                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                                    placeholder="Your Name"
-                                />
-                                <input
-                                    type="email"
-                                    className="edit-input"
-                                    value={editForm.email}
-                                    onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                                    placeholder="Your Email"
-                                />
-                            </div>
-                        ) : (
-                            <>
-                                <h2>{user.name}</h2>
-                                <p>{user.email}</p>
-                                {user.joinDate && (
-                                    <span className="join-date">Member since {user.joinDate}</span>
-                                )}
-                            </>
-                        )
+                        <>
+                            <h2>{userDoc?.displayName || user.displayName || 'User'}</h2>
+                            <p>{user.email}</p>
+                            {userDoc?.createdAt && (
+                                <span className="join-date">
+                                    Member since {new Date(userDoc.createdAt.toDate()).toLocaleDateString()}
+                                </span>
+                            )}
+                            {isAdmin && (
+                                <div className="admin-badge">
+                                    <Shield size={16} />
+                                    <span>Admin</span>
+                                </div>
+                            )}
+                        </>
                     ) : (
                         <>
                             <h2>Guest User</h2>
@@ -246,50 +176,22 @@ const ProfilePage: React.FC = () => {
 
                 <div className="profile-actions">
                     {user ? (
-                        isEditing ? (
-                            <>
-                                <button
-                                    className="primary-button small"
-                                    onClick={handleSaveProfile}
-                                    type="button"
-                                >
-                                    Save
-                                </button>
-                                <button
-                                    className="secondary-button small"
-                                    onClick={() => setIsEditing(false)}
-                                    type="button"
-                                >
-                                    Cancel
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <button
-                                    className="icon-button subtle"
-                                    onClick={() => setIsEditing(true)}
-                                    title="Edit Profile"
-                                    type="button"
-                                >
-                                    <Settings size={18} />
-                                </button>
-                                <button
-                                    className="icon-button danger"
-                                    onClick={handleLogout}
-                                    title="Logout"
-                                    type="button"
-                                >
-                                    <LogOut size={18} />
-                                </button>
-                            </>
-                        )
+                        <button
+                            className="logout-button"
+                            onClick={handleLogout}
+                            type="button"
+                        >
+                            <LogOut size={18} />
+                            <span>Sign Out</span>
+                        </button>
                     ) : (
                         <button
-                            className="primary-button"
+                            className="login-button"
                             onClick={() => setShowAuthModal(true)}
                             type="button"
                         >
-                            Login / Sign Up
+                            <User size={18} />
+                            <span>Sign In</span>
                         </button>
                     )}
                 </div>
@@ -459,7 +361,6 @@ const ProfilePage: React.FC = () => {
             <AuthModal
                 isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
-                onLogin={handleLogin}
             />
         </div>
     );

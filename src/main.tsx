@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { registerSW } from 'virtual:pwa-register'
+import installTrackingService from './services/installTrackingService'
 
 // Register service worker for PWA
 const updateSW = registerSW({
@@ -16,8 +17,12 @@ const updateSW = registerSW({
   },
 });
 
+// Initialize install tracking
+installTrackingService.initialize().catch(console.error);
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
   </StrictMode>,
 )
+

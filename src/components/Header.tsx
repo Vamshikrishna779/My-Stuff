@@ -1,6 +1,7 @@
 import React from 'react';
-import { Moon, Sun, Settings, User, HelpCircle } from 'lucide-react';
+import { Moon, Sun, Settings, User, HelpCircle, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import './Header.css';
 
 interface HeaderProps {
@@ -11,6 +12,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ theme, onThemeToggle, onSettingsClick }) => {
     const navigate = useNavigate();
+    const { isAdmin } = useAuth();
     const isDarkMode = theme === 'dark' || theme === 'cyberpunk' || theme === 'forest' || theme === 'ocean' || theme === 'sunset' || theme === 'dracula' || theme === 'nord' || theme === 'midnight' || theme === 'retro';
 
     return (
@@ -24,8 +26,8 @@ const Header: React.FC<HeaderProps> = ({ theme, onThemeToggle, onSettingsClick }
                             <path d="M16 16L20 20L16 24L12 20L16 16Z" fill="white" opacity="0.7" />
                             <defs>
                                 <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
-                                    <stop offset="0%" stopColor="#6366f1" />
-                                    <stop offset="100%" stopColor="#8b5cf6" />
+                                    <stop offset="0%" stopColor="#f5d93aff" />
+                                    <stop offset="100%" stopColor="#e2dc2aff" />
                                 </linearGradient>
                             </defs>
                         </svg>
@@ -57,6 +59,16 @@ const Header: React.FC<HeaderProps> = ({ theme, onThemeToggle, onSettingsClick }
                     >
                         <User size={20} />
                     </button>
+                    {isAdmin && (
+                        <button
+                            className="icon-button admin-button"
+                            onClick={() => navigate('/admin')}
+                            aria-label="Admin Dashboard"
+                            title="Admin Dashboard"
+                        >
+                            <Shield size={20} />
+                        </button>
+                    )}
                     <button
                         className="icon-button"
                         onClick={onSettingsClick}
@@ -72,3 +84,4 @@ const Header: React.FC<HeaderProps> = ({ theme, onThemeToggle, onSettingsClick }
 };
 
 export default Header;
+
