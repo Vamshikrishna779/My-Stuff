@@ -28,7 +28,7 @@ interface Metrics {
     userCount: number;
     installCount: number;
     monthlyActiveUsers: number;
-    liveUsers?: number; // New field
+    liveUsers?: number;
     lastUpdated: any;
 }
 
@@ -66,6 +66,7 @@ const AdminDashboard: React.FC = () => {
         userCount: 0,
         installCount: 0,
         monthlyActiveUsers: 0,
+        liveUsers: 0,
         lastUpdated: null
     });
     const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
@@ -88,8 +89,8 @@ const AdminDashboard: React.FC = () => {
             const usersSnap = await get(ref(rtdb, 'users'));
             const installsSnap = await get(ref(rtdb, 'installs'));
 
-            const realUserCount = usersSnap.size;
-            const realInstallCount = installsSnap.size;
+            const realUserCount = usersSnap.exists() ? Object.keys(usersSnap.val()).length : 0;
+            const realInstallCount = installsSnap.exists() ? Object.keys(installsSnap.val()).length : 0;
 
             // Update dashboard metrics
             await update(ref(rtdb, 'dashboard/metrics'), {
@@ -167,80 +168,81 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
-    // 1. Static Listeners (Metrics, Analyics, Presence)
+    // Listeners for metrics, presence, and analytics
     useEffect(() => {
         const metricsRef = ref(rtdb, 'dashboard/metrics');
         const handleMetrics = (snapshot: DataSnapshot) => {
             if (snapshot.exists()) {
-                setMetrics(snapshot.val() as Metrics);
+                setMetrics(prev => ({ ...prev, ...snapshot.val() }));
             }
         };
         onValue(metricsRef, handleMetrics);
 
         const presenceRef = ref(rtdb, 'status/online');
-        onValue(presenceRef, (snapshot) => {
-            if (snapshot.exists()) {
-                setMetrics(prev => ({ ...prev, liveUsers: snapshot.size }));
-            } else {
-                setMetrics(prev => ({ ...prev, liveUsers: 0 }));
-            }
-        });
+        const handlePresence = (snapshot: DataSnapshot) => {
+            setMetrics(prev => ({
+                ...prev,
+                liveUsers: snapshot.exists() ? Object.keys(snapshot.val()).length : 0
+            }));
+        };
+        onValue(presenceRef, handlePresence);
 
-        const analyticsQuery = query(ref(rtdb, 'analytics/daily'), limitToLast(30));
+        const analyticsRef = query(ref(rtdb, 'analytics/daily'), limitToLast(30));
         const handleAnalytics = (snapshot: DataSnapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
-                const analyticsArray = Object.values(data) as DailyAnalytics[];
-                const sorted = analyticsArray.sort((a, b) =>
+                const analyticsArray = Object.entries(data).map(([key, value]) => ({
+                    ...value as DailyAnalytics,
+                    id: key
+                })).sort((a, b) =>
                     new Date(a.date).getTime() - new Date(b.date).getTime()
                 );
-                setDailyAnalytics(sorted);
+                setDailyAnalytics(analyticsArray);
             } else {
                 setDailyAnalytics([]);
             }
         };
-        onValue(analyticsQuery, handleAnalytics);
+        onValue(analyticsRef, handleAnalytics);
 
         return () => {
             off(metricsRef);
             off(presenceRef);
-            off(analyticsQuery);
+            off(analyticsRef);
         };
     }, []);
 
-    // 2. Users Listener (Dynamic Limit)
+    // Users Listener
     useEffect(() => {
         const usersRef = query(ref(rtdb, 'users'), orderByChild('createdAt'), limitToLast(usersLimit));
         const handleUsers = (snapshot: DataSnapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
-                const usersList = Object.values(data) as RecentUser[];
-                const sorted = usersList.sort((a, b) =>
+                const usersList = Object.entries(data).map(([key, value]) => ({
+                    uid: key,
+                    ...(value as Omit<RecentUser, 'uid'>)
+                })).sort((a, b) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 );
-                setRecentUsers(sorted);
-                setLoading(false);
+                setRecentUsers(usersList);
             } else {
                 setRecentUsers([]);
-                setLoading(false);
             }
+            setLoading(false);
         };
         onValue(usersRef, handleUsers);
         return () => off(usersRef);
     }, [usersLimit]);
 
-    // 3. Installs Listener (Dynamic Limit)
+    // Installs Listener
     useEffect(() => {
         const installsRef = query(ref(rtdb, 'installs'), orderByChild('installedAt'), limitToLast(installsLimit));
         const handleInstalls = (snapshot: DataSnapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
-                const installs = Object.values(data)
-                    .map((install: any) => ({
-                        ...install,
-                        installId: install.installId || install.id
-                    }))
-                    .sort((a: any, b: any) => b.installedAt - a.installedAt);
+                const installs = Object.entries(data).map(([key, value]) => ({
+                    installId: key,
+                    ...(value as Omit<RecentInstall, 'installId'>)
+                })).sort((a, b) => b.installedAt - a.installedAt);
                 setRecentInstalls(installs);
             } else {
                 setRecentInstalls([]);
@@ -253,7 +255,8 @@ const AdminDashboard: React.FC = () => {
     const formatDate = (timestamp: any): string => {
         if (!timestamp) return 'N/A';
         try {
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            const date = typeof timestamp === 'number' ? new Date(timestamp) :
+                timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
             return date.toLocaleString();
         } catch {
             return 'Invalid date';
@@ -268,9 +271,6 @@ const AdminDashboard: React.FC = () => {
         return <Smartphone size={14} />;
     };
 
-
-
-    // Helper: Map Timezone to Flag
     const getCountryFlag = (timezone: string) => {
         if (!timezone) return '🌍';
         if (timezone.includes('Kolkata') || timezone.includes('India')) return '🇮🇳';
@@ -281,7 +281,6 @@ const AdminDashboard: React.FC = () => {
         return '🌍';
     };
 
-    // Action: Delete User
     const handleDeleteUser = async (uid: string) => {
         if (!confirm('Are you sure you want to delete this user? This removes them from the database.')) return;
         try {
@@ -294,7 +293,6 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
-    // Action: Block/Unblock User
     const handleBlockUser = async (user: RecentUser) => {
         const newStatus = !user.isBlocked;
         if (!confirm(`Are you sure you want to ${newStatus ? 'BLOCK' : 'UNBLOCK'} this user?`)) return;
@@ -307,7 +305,6 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
-    // Action: Delete Install
     const handleDeleteInstall = async (installId: string) => {
         if (!confirm('Delete this installation record?')) return;
         try {
@@ -320,11 +317,9 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
-    // Filtering & Sorting
     const getFilteredUsers = () => {
         let filtered = [...recentUsers];
 
-        // Search
         if (searchTerm) {
             const lower = searchTerm.toLowerCase();
             filtered = filtered.filter(u =>
@@ -334,11 +329,19 @@ const AdminDashboard: React.FC = () => {
             );
         }
 
-        // Sort
         if (sortConfig) {
             filtered.sort((a: any, b: any) => {
-                if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+                const aVal = a[sortConfig.key] || '';
+                const bVal = b[sortConfig.key] || '';
+
+                if (sortConfig.key === 'createdAt') {
+                    const aDate = new Date(aVal).getTime();
+                    const bDate = new Date(bVal).getTime();
+                    return sortConfig.direction === 'asc' ? aDate - bDate : bDate - aDate;
+                }
+
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
                 return 0;
             });
         }
@@ -358,7 +361,8 @@ const AdminDashboard: React.FC = () => {
     const formatRelativeTime = (timestamp: any): string => {
         if (!timestamp) return 'N/A';
         try {
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            const date = typeof timestamp === 'number' ? new Date(timestamp) :
+                timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
             const now = new Date();
             const diff = now.getTime() - date.getTime();
             const minutes = Math.floor(diff / 60000);
@@ -374,8 +378,6 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
-
-
     const exportInstallsCSV = () => {
         const headers = ['Install ID', 'Installed At', 'Last Active', 'Platform', 'User Agent', 'Version'];
         const rows = recentInstalls.map(i => [
@@ -388,25 +390,40 @@ const AdminDashboard: React.FC = () => {
         ]);
 
         const csv = [headers, ...rows]
-            .map(row => row.map(cell => `"${cell}"`).join(','))
+            .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
             .join('\n');
 
-        downloadCSV(csv, `installs_${Date.now()}.csv`);
-    };
-
-    const downloadCSV = (content: string, filename: string) => {
-        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = filename;
+        link.download = `installs_${Date.now()}.csv`;
         link.click();
         URL.revokeObjectURL(url);
     };
 
     const handleRefresh = () => {
-        // Listeners will automatically update with real-time data
+        handleRecalculateMetrics();
     };
+
+    const platformData = [
+        {
+            name: 'Mobile',
+            value: recentInstalls.filter(i => {
+                const p = (i.deviceInfo?.platform || '').toLowerCase();
+                return !p.includes('win') && !p.includes('mac') && !p.includes('linux') && !p.includes('desktop');
+            }).length
+        },
+        {
+            name: 'Desktop',
+            value: recentInstalls.filter(i => {
+                const p = (i.deviceInfo?.platform || '').toLowerCase();
+                return p.includes('win') || p.includes('mac') || p.includes('linux') || p.includes('desktop');
+            }).length
+        },
+    ];
+
+    const COLORS = ['#8884d8', '#82ca9d'];
 
     if (loading) {
         return (
@@ -431,7 +448,7 @@ const AdminDashboard: React.FC = () => {
                     </p>
                 </div>
                 <button className="refresh-button" onClick={handleRefresh} type="button">
-                    <RefreshCw size={20} />
+                    <RefreshCw size={20} className={syncing ? 'spin' : ''} />
                     <span>Refresh</span>
                 </button>
             </div>
@@ -468,6 +485,16 @@ const AdminDashboard: React.FC = () => {
                         <p>{metrics.installCount}</p>
                     </div>
                 </div>
+
+                <div className="stat-card">
+                    <div className="stat-icon">
+                        <TrendingUp size={24} />
+                    </div>
+                    <div className="stat-info">
+                        <h3>Monthly Active</h3>
+                        <p>{metrics.monthlyActiveUsers || 0}</p>
+                    </div>
+                </div>
             </div>
 
             {/* Analytics Chart */}
@@ -478,198 +505,164 @@ const AdminDashboard: React.FC = () => {
                         Growth Analytics (Last 30 Days)
                     </h2>
                 </div>
-                <div className="chart-container" style={{ height: '300px', width: '100%' }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={dailyAnalytics}>
-                            <defs>
-                                <linearGradient id="colorSignups" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
-                                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="colorInstalls" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8} />
-                                    <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} tickFormatter={(val) => val.split('-').slice(1).join('/')} />
-                            <YAxis stroke="#9ca3af" fontSize={12} />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                                itemStyle={{ color: '#e5e7eb' }}
-                            />
-                            <Area type="monotone" dataKey="signups" stroke="#8884d8" fillOpacity={1} fill="url(#colorSignups)" name="Signups" />
-                            <Area type="monotone" dataKey="installs" stroke="#82ca9d" fillOpacity={1} fill="url(#colorInstalls)" name="Installs" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-            <div className="metric-card">
-                <div className="metric-icon active">
-                    <Activity size={28} />
-                </div>
-                <div className="metric-content">
-                    <div className="metric-value">{metrics.monthlyActiveUsers || 0}</div>
-                    <div className="metric-label">Monthly Active</div>
-                </div>
-            </div>
-
-            <div className="metric-card">
-                <div className="metric-icon growth">
-                    <TrendingUp size={28} />
-                </div>
-                <div className="metric-content">
-                    <div className="metric-value">
-                        {dailyAnalytics.length > 0 ? dailyAnalytics[dailyAnalytics.length - 1]?.signups || 0 : 0}
-                    </div>
-                    <div className="metric-label">Signups Today</div>
-                </div>
-            </div>
-
-
-            {/* Daily Analytics Chart */}
-            {
-                dailyAnalytics.length > 0 && (
-                    <div className="analytics-section">
-                        <h2>
-                            <Calendar size={20} />
-                            Daily Activity (Last 30 Days)
-                        </h2>
-                        <div className="chart-container">
-                            <div className="simple-chart">
-                                {dailyAnalytics.map((day, index) => {
-                                    const maxValue = Math.max(...dailyAnalytics.map(d => (d.signups || 0) + (d.installs || 0)));
-                                    const height = maxValue > 0 ? ((day.signups || 0) + (day.installs || 0)) / maxValue * 100 : 0;
-                                    return (
-                                        <div key={index} className="chart-bar-group">
-                                            <div className="chart-bar" style={{ height: `${height}%` }}>
-                                                <div className="bar-signups" style={{ height: `${(day.signups || 0) / ((day.signups || 0) + (day.installs || 0)) * 100}%` }}></div>
-                                                <div className="bar-installs" style={{ height: `${(day.installs || 0) / ((day.signups || 0) + (day.installs || 0)) * 100}%` }}></div>
-                                            </div>
-                                            <div className="chart-label">{day.date.split('-')[2]}</div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="chart-legend">
-                                <div className="legend-item">
-                                    <div className="legend-color signups"></div>
-                                    <span>Signups</span>
-                                </div>
-                                <div className="legend-item">
-                                    <div className="legend-color installs"></div>
-                                    <span>Installs</span>
-                                </div>
-                            </div>
+                <div className="chart-container">
+                    {dailyAnalytics.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                            <AreaChart data={dailyAnalytics}>
+                                <defs>
+                                    <linearGradient id="colorSignups" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorInstalls" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                <XAxis
+                                    dataKey="date"
+                                    stroke="#9ca3af"
+                                    fontSize={12}
+                                    tickFormatter={(val) => {
+                                        const date = new Date(val);
+                                        return `${date.getMonth() + 1}/${date.getDate()}`;
+                                    }}
+                                />
+                                <YAxis stroke="#9ca3af" fontSize={12} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
+                                    itemStyle={{ color: '#e5e7eb' }}
+                                    labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="signups"
+                                    stroke="#8884d8"
+                                    fillOpacity={1}
+                                    fill="url(#colorSignups)"
+                                    name="Signups"
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="installs"
+                                    stroke="#82ca9d"
+                                    fillOpacity={1}
+                                    fill="url(#colorInstalls)"
+                                    name="Installs"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="empty-chart">
+                            <p>No analytics data available</p>
                         </div>
-                    </div>
-                )
-            }
+                    )}
+                </div>
+            </div>
 
-            {/* Recent Users */}
+            {/* Search & Platform Distribution */}
             <div className="admin-section">
-                <div className="admin-header">
-                    <div>
-                        <h1>Admin Dashboard</h1>
-                        <p className="admin-subtitle">Platform overview and user analytics</p>
-                    </div>
+                <div className="section-header">
+                    <h2>
+                        <Users size={20} />
+                        Recent Users
+                    </h2>
                 </div>
 
-                {/* Search & Stats Row */}
-                <div className="search-stats-container" style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                    <div className="search-box" style={{ flex: 1, minWidth: '300px' }}>
-                        <div className="input-group" style={{ display: 'flex', alignItems: 'center', background: '#1f2937', padding: '10px', borderRadius: '8px' }}>
+                <div className="search-stats-container">
+                    <div className="search-box">
+                        <div className="input-group">
                             <Search size={20} color="#9ca3af" />
                             <input
                                 type="text"
                                 placeholder="Search users by name, email, or ID..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                style={{ background: 'transparent', border: 'none', color: 'white', marginLeft: '10px', width: '100%', outline: 'none' }}
                             />
                         </div>
                     </div>
 
-                    {/* Platform Distribution Chart */}
-                    <div className="platform-chart" style={{ width: '300px', height: '200px', background: '#1f2937', borderRadius: '8px', padding: '10px' }}>
-                        <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#9ca3af' }}>Platform Distribution</h4>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={[
-                                        {
-                                            name: 'Mobile', value: recentInstalls.filter(i => {
-                                                const p = (i.deviceInfo?.platform || '').toLowerCase();
-                                                return !p.includes('win') && !p.includes('mac') && !p.includes('linux');
-                                            }).length
-                                        },
-                                        {
-                                            name: 'Desktop', value: recentInstalls.filter(i => {
-                                                const p = (i.deviceInfo?.platform || '').toLowerCase();
-                                                return p.includes('win') || p.includes('mac') || p.includes('linux');
-                                            }).length
-                                        },
-                                    ]}
-                                    innerRadius={40}
-                                    outerRadius={60}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    <Cell fill="#8884d8" />
-                                    <Cell fill="#82ca9d" />
-                                </Pie>
-                                <Tooltip contentStyle={{ backgroundColor: '#111827', border: 'none' }} />
-                                <Legend />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <div className="platform-chart">
+                        <h4>Platform Distribution</h4>
+                        {recentInstalls.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={200}>
+                                <PieChart>
+                                    <Pie
+                                        data={platformData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={40}
+                                        outerRadius={60}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {platformData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="empty-chart">
+                                <p>No install data</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                <div className="admin-header">
-                    <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
-                        <button
-                            className="admin-action-btn"
-                            onClick={handleRecalculateMetrics}
-                            disabled={syncing}
-                            title="Force update of User/Install counts from database"
-                        >
-                            <RefreshCw size={18} className={syncing ? 'spin' : ''} />
-                            {syncing ? 'Syncing...' : 'Sync Counts'}
-                        </button>
-                        <button className="download-btn">
-                            <Download size={18} />
-                            Export Data
-                        </button>
-                    </div>
+                <div className="action-buttons">
+                    <button
+                        className="admin-action-btn"
+                        onClick={handleRecalculateMetrics}
+                        disabled={syncing}
+                    >
+                        <RefreshCw size={18} className={syncing ? 'spin' : ''} />
+                        {syncing ? 'Syncing...' : 'Sync Counts'}
+                    </button>
                 </div>
+
                 <div className="data-table-container">
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th onClick={() => handleSort('email')} style={{ cursor: 'pointer' }}>Email ↕</th>
-                                <th onClick={() => handleSort('displayName')} style={{ cursor: 'pointer' }}>Name ↕</th>
+                                <th onClick={() => handleSort('email')} style={{ cursor: 'pointer' }}>
+                                    Email {sortConfig?.key === 'email' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+                                </th>
+                                <th onClick={() => handleSort('displayName')} style={{ cursor: 'pointer' }}>
+                                    Name {sortConfig?.key === 'displayName' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+                                </th>
                                 <th>Platform</th>
-                                <th onClick={() => handleSort('createdAt')} style={{ cursor: 'pointer' }}>Joined ↕</th>
+                                <th onClick={() => handleSort('createdAt')} style={{ cursor: 'pointer' }}>
+                                    Joined {sortConfig?.key === 'createdAt' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}
+                                </th>
                                 <th>Verified</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {getFilteredUsers().map(user => (
-                                <tr key={user.uid} style={{ opacity: user.isBlocked ? 0.5 : 1 }}>
+                                <tr key={user.uid} className={user.isBlocked ? 'blocked-user' : ''}>
                                     <td className="email-cell">
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            {user.providerId?.includes('google') ? <span title="Google">G</span> : <Mail size={14} />}
+                                        <div className="email-content">
+                                            {user.providerId?.includes('google') ?
+                                                <span className="google-badge" title="Google">G</span> :
+                                                <Mail size={14} />
+                                            }
                                             {user.email}
                                         </div>
                                     </td>
                                     <td>
                                         <div
-                                            style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+                                            className="user-name-cell"
                                             onClick={() => setSelectedUser(user)}
                                         >
-                                            <span style={{ fontWeight: 'bold', color: '#60a5fa' }}>{user.displayName || 'N/A'}</span>
-                                            <span style={{ fontSize: '12px', color: '#9ca3af' }}>{getCountryFlag(user.deviceInfo?.timezone)} {user.deviceInfo?.timezone || ''}</span>
+                                            <span className="user-name">{user.displayName || 'N/A'}</span>
+                                            <span className="user-timezone">
+                                                {getCountryFlag(user.deviceInfo?.timezone)} {user.deviceInfo?.timezone || ''}
+                                            </span>
                                         </div>
                                     </td>
                                     <td>
@@ -683,25 +676,27 @@ const AdminDashboard: React.FC = () => {
                                     </td>
                                     <td>
                                         {user.emailVerified ?
-                                            <span title="Verified"><CheckCircle size={16} color="#10b981" /></span> :
-                                            <span title="Not Verified"><XCircle size={16} color="#ef4444" /></span>
+                                            <span className="verified-badge" title="Verified">
+                                                <CheckCircle size={16} />
+                                            </span> :
+                                            <span className="not-verified-badge" title="Not Verified">
+                                                <XCircle size={16} />
+                                            </span>
                                         }
                                     </td>
                                     <td>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                        <div className="action-buttons-cell">
                                             <button
                                                 onClick={() => handleBlockUser(user)}
                                                 className="icon-btn"
                                                 title={user.isBlocked ? "Unblock User" : "Block User"}
-                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: user.isBlocked ? '#10b981' : '#f59e0b' }}
                                             >
                                                 {user.isBlocked ? <Shield size={18} /> : <ShieldAlert size={18} />}
                                             </button>
                                             <button
                                                 onClick={() => handleDeleteUser(user.uid)}
-                                                className="icon-btn"
+                                                className="icon-btn delete-btn"
                                                 title="Delete User"
-                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
                                             >
                                                 <Trash2 size={18} />
                                             </button>
@@ -711,10 +706,10 @@ const AdminDashboard: React.FC = () => {
                             ))}
                         </tbody>
                     </table>
-                    {recentUsers.length === 0 ? (
+                    {getFilteredUsers().length === 0 ? (
                         <div className="empty-state">
                             <Users size={48} />
-                            <p>No users yet</p>
+                            <p>No users found</p>
                         </div>
                     ) : (
                         <div className="pagination-container">
@@ -736,16 +731,15 @@ const AdminDashboard: React.FC = () => {
                         <Globe size={20} />
                         Installation History ({recentInstalls.filter(i => i.version).length})
                     </h2>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div className="section-actions">
                         <button
-                            className="export-btn"
+                            className="export-btn danger"
                             onClick={handlePruneInstalls}
                             type="button"
-                            title="Delete installs inactive > 60 days"
-                            style={{ backgroundColor: '#ef4444', border: 'none', color: 'white' }}
+                            disabled={syncing}
                         >
                             <Trash2 size={16} />
-                            Prune Inactive
+                            {syncing ? 'Pruning...' : 'Prune Inactive'}
                         </button>
                         <button className="export-btn" onClick={exportInstallsCSV} type="button">
                             <Download size={16} />
@@ -763,14 +757,15 @@ const AdminDashboard: React.FC = () => {
                                 <th>Version</th>
                                 <th>Installed</th>
                                 <th>Last Active</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {recentInstalls.map(install => (
                                 <tr key={install.installId}>
-                                    <td className="mono-cell" title={install.installId}>
+                                    <td className="mono-cell">
                                         <span className="id-badge">
-                                            #{(install.installId || '').split('_').pop()?.toUpperCase().substring(0, 8) || 'UNKNOWN'}
+                                            #{(install.installId || '').substring(0, 8).toUpperCase()}
                                         </span>
                                     </td>
                                     <td>
@@ -785,8 +780,8 @@ const AdminDashboard: React.FC = () => {
                                         </span>
                                     </td>
                                     <td>
-                                        <span style={{ color: install.version ? 'inherit' : '#ef4444' }}>
-                                            {install.version || 'Not Installed'}
+                                        <span className={install.version ? 'version-ok' : 'version-missing'}>
+                                            {install.version || 'N/A'}
                                         </span>
                                     </td>
                                     <td className="date-cell">{formatRelativeTime(install.installedAt)}</td>
@@ -794,7 +789,7 @@ const AdminDashboard: React.FC = () => {
                                     <td>
                                         <button
                                             onClick={() => handleDeleteInstall(install.installId)}
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
+                                            className="icon-btn delete-btn"
                                             title="Delete Record"
                                         >
                                             <Trash2 size={16} />
@@ -821,68 +816,67 @@ const AdminDashboard: React.FC = () => {
                     )}
                 </div>
             </div>
+
             {/* User Details Modal */}
             {selectedUser && (
-                <div className="modal-overlay" style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center', zIndex: 1000
-                }} onClick={() => setSelectedUser(null)}>
-                    <div className="modal-content" style={{
-                        backgroundColor: '#1f2937', padding: '24px', borderRadius: '12px',
-                        maxWidth: '500px', width: '90%', color: 'white', border: '1px solid #374151'
-                    }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                            <h2 style={{ margin: 0 }}>{selectedUser.displayName}</h2>
-                            <button onClick={() => setSelectedUser(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>
+                <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>{selectedUser.displayName || 'User Details'}</h2>
+                            <button className="modal-close" onClick={() => setSelectedUser(null)}>
                                 <XCircle size={24} />
                             </button>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                            <div>
-                                <label style={{ color: '#9ca3af', fontSize: '12px' }}>Email</label>
+                        <div className="modal-grid">
+                            <div className="modal-field">
+                                <label>Email</label>
                                 <p>{selectedUser.email}</p>
                             </div>
-                            <div>
-                                <label style={{ color: '#9ca3af', fontSize: '12px' }}>UID</label>
-                                <p style={{ fontSize: '12px', fontFamily: 'monospace' }}>{selectedUser.uid}</p>
+                            <div className="modal-field">
+                                <label>UID</label>
+                                <p className="uid-text">{selectedUser.uid}</p>
                             </div>
-                            <div>
-                                <label style={{ color: '#9ca3af', fontSize: '12px' }}>Provider</label>
+                            <div className="modal-field">
+                                <label>Provider</label>
                                 <p>{selectedUser.providerId || 'password'}</p>
                             </div>
-                            <div>
-                                <label style={{ color: '#9ca3af', fontSize: '12px' }}>Verified</label>
-                                <p>{selectedUser.emailVerified ? 'Yes ✅' : 'No ❌'}</p>
+                            <div className="modal-field">
+                                <label>Verified</label>
+                                <p className={selectedUser.emailVerified ? 'verified' : 'not-verified'}>
+                                    {selectedUser.emailVerified ? 'Yes ✅' : 'No ❌'}
+                                </p>
                             </div>
-                            <div>
-                                <label style={{ color: '#9ca3af', fontSize: '12px' }}>Joined</label>
+                            <div className="modal-field">
+                                <label>Joined</label>
                                 <p>{formatDate(selectedUser.createdAt)}</p>
                             </div>
-                            <div>
-                                <label style={{ color: '#9ca3af', fontSize: '12px' }}>Last Login</label>
+                            <div className="modal-field">
+                                <label>Last Login</label>
                                 <p>{formatDate(selectedUser.lastLogin)}</p>
+                            </div>
+                            <div className="modal-field">
+                                <label>Block Status</label>
+                                <p className={selectedUser.isBlocked ? 'blocked' : 'active'}>
+                                    {selectedUser.isBlocked ? 'Blocked 🔒' : 'Active ✅'}
+                                </p>
                             </div>
                         </div>
 
-                        <div style={{ marginTop: '20px', borderTop: '1px solid #374151', paddingTop: '16px' }}>
-                            <h4 style={{ margin: '0 0 10px 0' }}>Device Info</h4>
-                            <pre style={{ background: '#111827', padding: '10px', borderRadius: '6px', fontSize: '12px', overflow: 'auto' }}>
+                        <div className="modal-section">
+                            <h4>Device Info</h4>
+                            <pre className="device-info">
                                 {JSON.stringify(selectedUser.deviceInfo, null, 2)}
                             </pre>
                         </div>
 
-                        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                        <div className="modal-footer">
                             <button
                                 onClick={() => {
                                     handleBlockUser(selectedUser);
                                     setSelectedUser(null);
                                 }}
-                                style={{
-                                    padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                                    backgroundColor: selectedUser.isBlocked ? '#10b981' : '#f59e0b', color: 'white'
-                                }}
+                                className={`modal-btn ${selectedUser.isBlocked ? 'unblock-btn' : 'block-btn'}`}
                             >
                                 {selectedUser.isBlocked ? 'Unblock User' : 'Block User'}
                             </button>
@@ -891,10 +885,7 @@ const AdminDashboard: React.FC = () => {
                                     handleDeleteUser(selectedUser.uid);
                                     setSelectedUser(null);
                                 }}
-                                style={{
-                                    padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                                    backgroundColor: '#ef4444', color: 'white'
-                                }}
+                                className="modal-btn delete-btn"
                             >
                                 Delete User
                             </button>
@@ -902,7 +893,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div >
+        </div>
     );
 };
 
