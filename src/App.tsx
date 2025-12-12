@@ -34,15 +34,37 @@ const router = createBrowserRouter([
 ]);
 
 import { useEffect } from 'react';
-import installTrackingService from './services/installTrackingService';
+import { auth, rtdb } from './config/firebase'; // Direct auth import for listener
+import { ref, onValue } from 'firebase/database';
+import presenceService from './services/presenceService';
 
 function App() {
     useEffect(() => {
-        const handleAppInstalled = () => {
-            installTrackingService.trackInstall();
-        };
-        window.addEventListener('appinstalled', handleAppInstalled);
-        return () => window.removeEventListener('appinstalled', handleAppInstalled);
+        // Initialize anonymous or authenticated presence
+        // We listen to auth state to switch ID if they login
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            if (user) {
+                presenceService.initialize(user.uid);
+
+                // Listen for Block Status
+                const blockRef = ref(rtdb, `users/${user.uid}/isBlocked`);
+                onValue(blockRef, async (snapshot) => {
+                    if (snapshot.exists() && snapshot.val() === true) {
+                        await auth.signOut();
+                        alert('Your account has been blocked by the administrator.');
+                        window.location.href = '/';
+                    }
+                });
+
+            } else {
+                presenceService.initialize(); // Anonymous
+            }
+        });
+
+        // Also init immediately (will be Anon first usually)
+        presenceService.initialize();
+
+        return () => unsubscribe();
     }, []);
 
     return (

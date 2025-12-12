@@ -1,0 +1,42 @@
+{
+    "rules": {
+        "users": {
+            "$uid": {
+                ".read": "$uid === auth.uid",
+                ".write": "$uid === auth.uid",
+                "preferences": {
+                    ".validate": "newData.hasChildren(['theme'])"
+                }
+            }
+        },
+        "installs": {
+            ".read": true,
+            ".write": true,
+            "$installId": {
+                ".validate": "newData.hasChildren(['platform', 'userAgent'])"
+            }
+        },
+        "analytics": {
+            ".read": true,
+            ".write": true
+        },
+        "dashboard": {
+            ".read": true,
+            ".write": true,
+            "metrics": {
+                "userCount": {
+                    ".validate": "newData.isNumber()"
+                },
+                "installCount": {
+                    ".validate": "newData.isNumber()"
+                }
+            }
+        },
+        "status": {
+            "online": {
+                ".read": true,
+                ".write": true
+            }
+        }
+    }
+}

@@ -4,6 +4,20 @@
     padding: 2rem;
 }
 
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
 .admin-dashboard.loading {
     display: flex;
     flex-direction: column;

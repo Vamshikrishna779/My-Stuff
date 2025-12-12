@@ -8,7 +8,7 @@ import {
     type User,
     sendPasswordResetEmail
 } from 'firebase/auth';
-import { ref, set, update, runTransaction, serverTimestamp as rtdbTimestamp } from 'firebase/database';
+import { ref, set, get, update, runTransaction, serverTimestamp as rtdbTimestamp } from 'firebase/database';
 import { auth, rtdb, googleProvider } from '../config/firebase';
 import installTrackingService from './installTrackingService';
 
@@ -104,15 +104,23 @@ class AuthService {
     private async createUserDocument(user: User, displayName: string): Promise<void> {
         const userRef = ref(rtdb, `users/${user.uid}`);
 
-        const deviceInfo = this.getDeviceInfo();
-        const installRef = this.getOrCreateInstallRef();
-
         try {
+            // Check if user already exists
+            const snapshot = await get(userRef);
+            if (snapshot.exists()) {
+                return; // User exists, do not overwrite
+            }
+
+            const deviceInfo = this.getDeviceInfo();
+            const installRef = this.getOrCreateInstallRef();
+
             await set(userRef, {
                 uid: user.uid,
                 email: user.email,
                 displayName: displayName || user.displayName || '',
                 photoURL: user.photoURL || '',
+                emailVerified: user.emailVerified,
+                providerId: user.providerData[0]?.providerId || 'password',
                 createdAt: rtdbTimestamp(),
                 lastLogin: rtdbTimestamp(),
                 deviceInfo,
@@ -148,11 +156,20 @@ class AuthService {
      */
     private async updateLastLogin(uid: string): Promise<void> {
         try {
+            const user = auth.currentUser;
             const userRef = ref(rtdb, `users/${uid}`);
-            await update(userRef, {
+            const updates: any = {
                 lastLogin: rtdbTimestamp(),
                 'stats/lastActive': rtdbTimestamp()
-            });
+            };
+
+            // Update verification status if user object is available
+            if (user) {
+                updates['emailVerified'] = user.emailVerified;
+                updates['providerId'] = user.providerData[0]?.providerId || 'password';
+            }
+
+            await update(userRef, updates);
         } catch (error) {
             console.error('Error updating last login:', error);
         }

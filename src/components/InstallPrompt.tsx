@@ -1,12 +1,21 @@
-// src/components/InstallPrompt.tsx
 import React, { useState } from 'react';
 import { usePwaInstall } from '../hooks/usePwaInstall';
+import installTrackingService from '../services/installTrackingService';
 
 const InstallPrompt: React.FC = () => {
     const { canInstall, triggerInstall } = usePwaInstall();
     const [hidden, setHidden] = useState(false);
 
     if (!canInstall || hidden) return null;
+
+    const handleInstall = async () => {
+        const accepted = await triggerInstall();
+        if (accepted) {
+            console.log('User accepted install prompt');
+            await installTrackingService.trackInstall();
+        }
+        setHidden(true);
+    };
 
     return (
         <>
@@ -120,10 +129,7 @@ const InstallPrompt: React.FC = () => {
 
                         <button
                             className="install-btn install"
-                            onClick={async () => {
-                                await triggerInstall();
-                                setHidden(true);
-                            }}
+                            onClick={handleInstall}
                         >
                             Install
                         </button>

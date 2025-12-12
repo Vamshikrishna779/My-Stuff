@@ -25,16 +25,17 @@ export function usePwaInstall() {
         };
     }, []);
 
-    const triggerInstall = async () => {
-        if (!deferredPrompt) return;
+    const triggerInstall = async (): Promise<boolean> => {
+        if (!deferredPrompt) return false;
 
         await deferredPrompt.prompt();
 
-        // Just wait, no unused variables
-        await deferredPrompt.userChoice;
+        const choiceResult = await deferredPrompt.userChoice;
 
         setDeferredPrompt(null);
         setCanInstall(false);
+
+        return choiceResult.outcome === 'accepted';
     };
 
     return { canInstall, triggerInstall };
